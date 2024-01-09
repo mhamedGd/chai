@@ -1,0 +1,8 @@
+github.com/gowebapi/webapi v0.0.0-20221221115732-41cedfc27a0b h1:ziwlwRTFt5kSst3238Ndwce+wHZh3BC05nxBThB08XE=
+github.com/gowebapi/webapi v0.0.0-20221221115732-41cedfc27a0b/go.mod h1:idYMKBl+9tqA6sZrzVqN+3XGWANtIRP6CLZsxZOiIFg=
+github.com/udhos/goglmath v1.0.0 h1:H8zOIiK05prJ1Espde1fA5BeiPdzdl1WcZ0GFhGOAbM=
+github.com/udhos/goglmath v1.0.0/go.mod h1:0ridDcbvZrz1sZzuztWOO5OCK6M7cTRLTFRGDW3wjoA=
+golang.org/x/image v0.14.0 h1:tNgSxAFe3jC4uYqvZdTr84SZoM1KfwdC9SKIFrLjFn4=
+golang.org/x/image v0.14.0/go.mod h1:HUYqC05R2ZcZ3ejNQsIHQDQiwWM4JBqmm6MKANTp4LE=
+golang.org/x/text v0.14.0 h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=
+golang.org/x/text v0.14.0/go.mod h1:18ZOQIKpY8NJVqYksKHtTdi31H5itFRjB5/qKTNYzSU=

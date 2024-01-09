@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="viewport" tabindex="1"></canvas>
+    </div>
+    <div class="mobile-controller">
+        <div class="controller-set">
+            <a class="dpad up"    id="dpad-up">     <p>u</p></a>
+            <a class="dpad down"  id="dpad-down">   <p>d</p></a>
+            <a class="dpad left"  id="dpad-left">   <p>l</p></a>
+            <a class="dpad right" id="dpad-right">  <p>r</p></a>
+        </div>
+        <div class="controller-set">
+            <a class="button main-button" id="main-button"   ><p>A</p></a>
+            <a class="button side-button" id="side-button" ><p>B</p></a>
+        </div>
+    </div>
+    <script type="module" src="./wasm_exec.js"></script>
+    <script type="module">
+        document.addEventListener("contextmenu", (e) => {e.preventDefault()})
+        /*
+        let canvas = document.getElementById("viewport");
+        canvas.addEventListener("click", async () => {
+            await canvas.requestPointerLock();
+        });
+        */
+        
+        const go = new Go();
+        var dpad_up = document.getElementById("dpad-up")
+        var dpad_down = document.getElementById("dpad-down")
+        var dpad_left = document.getElementById("dpad-left")
+        var dpad_right = document.getElementById("dpad-right")
+        
+        var main_button = document.getElementById("main-button")
+        var side_button = document.getElementById("side-button")
+        
+        WebAssembly.instantiateStreaming(fetch('app.wasm'), 
+        go.importObject).then((result) => {
+            go.run(result.instance);
+            
+            //------
+            dpad_up.addEventListener("touchstart", (e) => {
+                e.preventDefault()
+                js_dpad_up(1)
+            })
+            dpad_up.addEventListener("touchend", (e) => {
+                e.preventDefault()
+                js_dpad_up(0)
+            })
+            //------
+            dpad_down.addEventListener("touchstart", (e) => {
+                e.preventDefault()
+                js_dpad_down(1)
+            })
+            dpad_down.addEventListener("touchend", (e) => {
+                e.preventDefault()
+                js_dpad_down(0)
+            })
+            //------
+            dpad_left.addEventListener("touchstart", (e) => {
+                e.preventDefault()
+                js_dpad_left(1)
+            })
+            dpad_left.addEventListener("touchend", (e) => {
+                e.preventDefault()
+                js_dpad_left(0)
+            })
+            //------
+            dpad_right.addEventListener("touchstart", (e) => {
+                e.preventDefault()
+                js_dpad_right(1)
+            })
+            dpad_right.addEventListener("touchend", (e) => {
+                e.preventDefault()
+                js_dpad_right(0)
+            })
+            //------
+            main_button.addEventListener("pointerdown", (e) => {
+                js_main_button(1)
+            })
+            main_button.addEventListener("pointerup", (e) => {
+                js_main_button(0)
+            })
+            //------
+            side_button.addEventListener("pointerdown", (e) => {
+                js_side_button(1)
+            })
+            side_button.addEventListener("pointerup", (e) => {
+                js_side_button(0)
+            })
+            //------
+
+            //js_start()
+
+            
+            prev_frame_timestamp = Date.now();
+            current_frame_timestamp = Date.now();
+            step();
+        });
+        let prev_frame_timestamp = Date.now();
+        let current_frame_timestamp = Date.now();
+        function step(){
+            current_frame_timestamp = Date.now();
+            let dt = (current_frame_timestamp - prev_frame_timestamp)/1000.0;
+            prev_frame_timestamp = current_frame_timestamp;
+
+            js_update(dt);
+            js_draw();
+            requestAnimationFrame(step);
+        }
+    </script>
+</body>
+</html>
