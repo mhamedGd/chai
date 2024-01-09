@@ -11,7 +11,7 @@ Written in ***GO***
 
 **Run**
 ```
-    Aclhemy_Examples/build.sh
+    Chai_Examples/build.sh
 ```
 ---
 
