@@ -2,8 +2,6 @@ package chai
 
 import (
 	"syscall/js"
-
-	"github.com/gowebapi/webapi/graphics/webgl2"
 )
 
 var app_url string
@@ -37,7 +35,6 @@ USING THE EventFunc[T] type ------- (1)
 
 var currentWidth, currentHeight int
 var canvas js.Value
-var glRef webgl2.RenderingContext
 var appRef *App
 
 var Cam Camera2D
@@ -60,11 +57,8 @@ func Run(_app *App) {
 	canvas.Set("width", _app.Width)
 	canvas.Set("height", _app.Height)
 
-	glRef = *webgl2.RenderingContextFromJS(canvasContext)
-
-	//glRef.BlendFunc(webgl2.SRC_ALPHA, webgl2.ONE_MINUS_SRC_ALPHA)
-	glRef.BlendFuncSeparate(webgl2.SRC_ALPHA, webgl2.ONE_MINUS_SRC_ALPHA, webgl2.ONE, webgl2.ONE)
-	glRef.Enable(webgl2.BLEND)
+	canvasContext.Call("blendFuncSeparate", canvasContext.Get("SRC_ALPHA"), canvasContext.Get("ONE_MINUS_SRC_ALPHA"), canvasContext.Get("ONE"), canvasContext.Get("ONE"))
+	canvasContext.Call("enable", canvasContext.Get("BLEND"))
 
 	tempStart = _app.OnStart
 	tempUpdate = _app.OnUpdate
@@ -89,7 +83,7 @@ func Run(_app *App) {
 
 	Shapes.Init()
 	Sprites.Init("")
-	glRef.Viewport(0, 0, appRef.Width, appRef.Height)
+	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 
 	addEventListenerWindow(JS_KEYUP, func(ae *AppEvent) {
 		_app.OnEvent(ae)
@@ -155,9 +149,9 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
-	glRef.Viewport(0, 0, currentWidth, currentHeight)
-	glRef.ClearColor(0.1, 0.0, 0.2, 1.0)
-	glRef.Clear(webgl2.COLOR_BUFFER_BIT)
+	canvasContext.Call("viewport", 0, 0, currentWidth, currentHeight)
+	canvasContext.Call("clearColor", 0.1, 0.0, 0.2, 1.0)
+	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
 
 	//Shapes.DrawLine(NewVector2f(0.0, 0.0), NewVector2f(2.5, 0.5), RGBA8{255, 255, 0, 255})
 	tempDraw()

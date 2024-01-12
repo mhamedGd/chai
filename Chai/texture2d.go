@@ -4,16 +4,12 @@ import (
 	"image"
 	"image/png"
 	"net/http"
-	"reflect"
 	"syscall/js"
-	"unsafe"
-
-	"github.com/gowebapi/webapi/graphics/webgl"
 )
 
 type Texture2D struct {
 	Width, Height, bpp int
-	textureId          *webgl.Texture
+	textureId          js.Value
 }
 
 type Pixel struct {
@@ -53,28 +49,20 @@ func LoadPng(_filePath string) Texture2D {
 		}
 	}
 
-	tempTexture.textureId = glRef.CreateTexture()
-	glRef.ActiveTexture(webgl.TEXTURE0)
-	glRef.BindTexture(webgl.TEXTURE_2D, tempTexture.textureId)
+	tempTexture.textureId = canvasContext.Call("createTexture")
+	canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE0"))
+	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), tempTexture.textureId)
 
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, int(webgl.NEAREST))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, int(webgl.NEAREST))
-	//canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), canvasContext.Get("NEAREST"))
-	//canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), canvasContext.Get("NEAREST"))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, int(webgl.CLAMP_TO_EDGE))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, int(webgl.CLAMP_TO_EDGE))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), canvasContext.Get("NEAREST"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), canvasContext.Get("NEAREST"))
 
-	jsPixels := js.Global().Get("Uint8Array").New(len(pixels) * 4)
-	var pixelsBytes []byte
-	headerPixels := (*reflect.SliceHeader)(unsafe.Pointer(&pixelsBytes))
-	headerPixels.Cap = cap(pixels) * 4
-	headerPixels.Len = len(pixels) * 4
-	headerPixels.Data = uintptr(unsafe.Pointer(&pixels[0]))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_S"), canvasContext.Get("CLAMP_TO_EDGE"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_T"), canvasContext.Get("CLAMP_TO_EDGE"))
 
-	js.CopyBytesToJS(jsPixels, pixelsBytes)
+	jsPixels := pixelBufferToJsPixelBubffer(pixels)
 
 	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA8"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
-	//glRef.TexImage2D(webgl.TEXTURE_2D, 0, int(webgl2.RGBA8), tempTexture.Width, tempTexture.Height, 0, webgl2.RGBA, webgl2.UNSIGNED_BYTE, pixels)
+
 	return tempTexture
 }
 
@@ -97,27 +85,20 @@ func LoadTextureFromImg(img image.Image) Texture2D {
 		}
 	}
 
-	tempTexture.textureId = glRef.CreateTexture()
-	glRef.ActiveTexture(webgl.TEXTURE0)
-	glRef.BindTexture(webgl.TEXTURE_2D, tempTexture.textureId)
+	tempTexture.textureId = canvasContext.Call("createTexture")
+	canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE0"))
+	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), tempTexture.textureId)
 
-	glRef.PixelStorei(webgl.UNPACK_ALIGNMENT, 1)
+	canvasContext.Call("pixelStorei", canvasContext.Get("UNPACK_ALIGNMENT"), 1)
 
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MIN_FILTER, int(webgl.NEAREST))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_MAG_FILTER, int(webgl.NEAREST))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_S, int(webgl.CLAMP_TO_EDGE))
-	glRef.TexParameteri(webgl.TEXTURE_2D, webgl.TEXTURE_WRAP_T, int(webgl.CLAMP_TO_EDGE))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), canvasContext.Get("NEAREST"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), canvasContext.Get("NEAREST"))
 
-	jsPixels := js.Global().Get("Uint8Array").New(len(pixels) * 4)
-	var pixelsBytes []byte
-	headerPixels := (*reflect.SliceHeader)(unsafe.Pointer(&pixelsBytes))
-	headerPixels.Cap = cap(pixels) * 4
-	headerPixels.Len = len(pixels) * 4
-	headerPixels.Data = uintptr(unsafe.Pointer(&pixels[0]))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_S"), canvasContext.Get("CLAMP_TO_EDGE"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_T"), canvasContext.Get("CLAMP_TO_EDGE"))
 
-	js.CopyBytesToJS(jsPixels, pixelsBytes)
-
+	jsPixels := pixelBufferToJsPixelBubffer(pixels)
 	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA8"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
-	//glRef.TexImage2D(webgl.TEXTURE_2D, 0, int(webgl2.RGBA8), tempTexture.Width, tempTexture.Height, 0, webgl2.RGBA, webgl2.UNSIGNED_BYTE, pixels)
+
 	return tempTexture
 }

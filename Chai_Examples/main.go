@@ -19,7 +19,7 @@ func main() {
 	var dpad_modifier chai.Vector2f = chai.Vector2fZero
 
 	var bgl_texture chai.Texture2D
-	//var tile chai.Texture2D
+
 	var fontAtlas chai.FontBatchAtlas
 	var englishFontAtlas chai.FontBatchAtlas
 
@@ -28,7 +28,7 @@ func main() {
 		Height: 1080,
 		Title:  "Test",
 		OnStart: func() {
-			//fmt.Printf("On Start\n")
+
 			chai.LogF("STARTED\n")
 
 			midScreen = chai.NewVector2f(400.0, 300.0)
@@ -43,9 +43,6 @@ func main() {
 			chai.Shapes.LineWidth = .5
 
 			bgl_texture = chai.LoadPng("Assets/tile_0004.png")
-
-			//tile = chai.LoadPng("Assets/Asset 2.png")
-			//mapp = chai.LoadPng("Assets/Map.png")
 
 			chai.MainButton_Pressed.AddListener(func(i ...int) {
 				dpad_modifier.Y += 1.0
@@ -96,7 +93,6 @@ func main() {
 
 			velocity.X = chai.LerpFloat32(velocity.X, (inputAxis.X+dpad_modifier.X)*speed, float32(dt)*2.5)
 			velocity.Y = chai.LerpFloat32(velocity.Y, (inputAxis.Y+dpad_modifier.Y)*speed, float32(dt)*2.5)
-			//chai.ScrollView(chai.Vector2fRight.Scale(velocity.X * 3.0))
 
 			rotation -= float32(dt*600.0) * velocity.X
 			rotation = float32(math.Mod(float64(rotation), 360))
@@ -112,9 +108,8 @@ func main() {
 
 			chai.Shapes.DrawTriangleRotated(midPoint, chai.NewVector2f(2.0, 4.0), chai.NewRGBA8(255, 0, 0, 255), rotation)
 			chai.Sprites.DrawSpriteOrigin(chai.NewVector2f(2, 0.0), chai.Vector2fZero, chai.Vector2fOne, &bgl_texture, chai.NewRGBA8(255, 255, 255, 255))
-
 			for i := 0; i < 1; i++ {
-				fontAtlas.DrawString("ابدا اللعب", chai.Vector2fOne.AddXY(0.0, 0.0), 0.5, chai.WHITE)
+				fontAtlas.DrawString("ابدأ اللعب ٢/٤", chai.Vector2fOne.AddXY(0.0, 0.0), 0.5, chai.WHITE)
 				englishFontAtlas.DrawString("Baghdad Game Lab\nBaghdad Game Lab", chai.Vector2fOne.AddXY(0.0, 35.0), 0.5, chai.WHITE)
 			}
 

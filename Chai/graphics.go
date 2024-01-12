@@ -6,27 +6,10 @@ import (
 	"math"
 	"syscall/js"
 	"unsafe"
-
-	"github.com/gowebapi/webapi/graphics/webgl"
-	"github.com/gowebapi/webapi/graphics/webgl2"
 )
 
 var canvasContext js.Value
 
-func CreateVertexArray() webgl.Buffer {
-	return *webgl.BufferFromJS(canvasContext.Call("createVertexArray"))
-
-}
-
-/*
-	func BindVertexArray(buf webgl2.Buffer) {
-		canvasContext.Call("createVertexArray", js.Value(buf))
-	}
-
-	func BindAttribLocation(program webgl2.Program, index int, name string) {
-		canvasContext.Call("bindAttribLocation", js.Value(program), index, name)
-	}
-*/
 type RGBA8 struct {
 	r, g, b, a uint8
 }
@@ -52,8 +35,8 @@ func NewVertex(_coords, _uv Vector2f, _color RGBA8) Vertex {
 const vertexByteSize uintptr = unsafe.Sizeof(Vertex{})
 
 type ShapeBatch struct {
-	VAO              *webgl2.VertexArrayObject
-	VBO, IBO         *webgl.Buffer
+	vao              js.Value
+	vbo, ibo         js.Value
 	Vertices         []Vertex
 	Indices          []int32
 	NumberOfElements int
@@ -67,69 +50,29 @@ func (_shapesB *ShapeBatch) Init() {
 	_shapesB.Vertices = make([]Vertex, 0)
 	_shapesB.Indices = make([]int32, 0)
 
-	_shapesB.VAO = glRef.CreateVertexArray()
-	glRef.BindVertexArray(_shapesB.VAO)
+	_shapesB.vao = canvasContext.Call("createVertexArray")
+	canvasContext.Call("bindVertexArray", _shapesB.vao)
 
-	_shapesB.VBO = glRef.CreateBuffer()
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, _shapesB.VBO)
+	_shapesB.vbo = canvasContext.Call("createBuffer")
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), _shapesB.vbo)
 
-	/*
-		glRef.EnableVertexAttribArray(0)
-		glRef.VertexAttribPointer(0, 2, webgl.FLOAT, false, int(unsafe.Sizeof(Vertex{})), int(unsafe.Offsetof(Vertex{}.Coordinates)))
-			glRef.EnableVertexAttribArray(1)
-			glRef.VertexAttribPointer(1, 4, webgl.UNSIGNED_BYTE, true, int(unsafe.Sizeof(Vertex{})), int(unsafe.Offsetof(Vertex{}.Color)))
-	*/
+	canvasContext.Call("enableVertexAttribArray", 0)
+	canvasContext.Call("enableVertexAttribArray", 1)
+	canvasContext.Call("enableVertexAttribArray", 2)
 
-	glRef.EnableVertexAttribArray(0)
-	glRef.EnableVertexAttribArray(1)
-	glRef.EnableVertexAttribArray(2)
+	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
+	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
+	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
 
-	glRef.VertexAttribPointer(0, 2, webgl.FLOAT, false, VertexSize, 0)
-	glRef.VertexAttribPointer(1, 4, webgl.UNSIGNED_BYTE, true, VertexSize, 8)
-	glRef.VertexAttribPointer(2, 2, webgl.FLOAT, false, VertexSize, 12)
+	_shapesB.ibo = canvasContext.Call("createBuffer")
 
-	_shapesB.IBO = glRef.CreateBuffer()
-	glRef.BindBuffer(webgl.ELEMENT_ARRAY_BUFFER, _shapesB.IBO)
+	canvasContext.Call("bindVertexArray", js.Null())
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
+	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), js.Null())
 
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, &webgl.Buffer{})
-	glRef.BindBuffer(webgl.ELEMENT_ARRAY_BUFFER, &webgl.Buffer{})
-
-	glRef.DisableVertexAttribArray(0)
-	glRef.DisableVertexAttribArray(1)
-	glRef.DisableVertexAttribArray(2)
-
-	// vertexShader := `#version 300 es
-
-	// precision mediump float;
-
-	// in vec2 coordinates;
-	// in vec4 colors;
-
-	// out vec4 vertex_FragColor;
-
-	// uniform mat4 projection_matrix;
-	// uniform mat4 view_matrix;
-
-	// void main(void) {
-	// 	vec4 global_position = vec4(0.0);
-	// 	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
-	// 	global_position.z = 0.0;
-	// 	global_position.w = 1.0;
-	// 	gl_Position = global_position;
-
-	// 	vertex_FragColor = colors;
-	// }`
-
-	// fragmentShader := `#version 300 es
-
-	// precision mediump float;
-
-	// in vec4 vertex_FragColor;
-
-	// out vec4 fragColor;
-	// void main(void) {
-	// 	fragColor = vertex_FragColor;
-	// }`
+	canvasContext.Call("disableVertexAttribArray", 0)
+	canvasContext.Call("disableVertexAttribArray", 1)
+	canvasContext.Call("disableVertexAttribArray", 2)
 
 	//_shapesB.Shader.ParseShader(vertexShader, fragmentShader)
 	_shapesB.Shader.ParseShaderFromFile("shapes.shader")
@@ -137,7 +80,6 @@ func (_shapesB *ShapeBatch) Init() {
 	_shapesB.Shader.AddAttribute("coordinates")
 	_shapesB.Shader.AddAttribute("colors")
 
-	// LogF("%v", glRef.GetAttribLocation(_shapesB.Shader.ShaderProgramID, "vertexColor"))
 }
 
 func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
@@ -241,29 +183,28 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 }
 
 func (_sp *ShapeBatch) finalize() {
-	glRef.BindVertexArray(_sp.VAO)
+	canvasContext.Call("bindVertexArray", _sp.vao)
 
 	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices)
 	jsElem := int32BufferToJsInt32Buffer(_sp.Indices)
 
-	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), _sp.VBO.Value_JS)
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), _sp.vbo)
 	canvasContext.Call("bufferData", canvasContext.Get("ARRAY_BUFFER"), jsVerts, canvasContext.Get("STATIC_DRAW"))
 
-	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), _sp.IBO.Value_JS)
+	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), _sp.ibo)
 	canvasContext.Call("bufferData", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), jsElem, canvasContext.Get("STATIC_DRAW"))
 
-	glRef.EnableVertexAttribArray(0)
-	glRef.EnableVertexAttribArray(1)
-	glRef.EnableVertexAttribArray(2)
+	canvasContext.Call("enableVertexAttribArray", 0)
+	canvasContext.Call("enableVertexAttribArray", 1)
+	canvasContext.Call("enableVertexAttribArray", 2)
 
-	glRef.VertexAttribPointer(0, 2, webgl.FLOAT, false, VertexSize, 0)
-	glRef.VertexAttribPointer(1, 4, webgl.UNSIGNED_BYTE, true, VertexSize, 8)
-	glRef.VertexAttribPointer(2, 2, webgl.FLOAT, false, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
+	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
+	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
 
-	glRef.BindVertexArray(&webgl2.VertexArrayObject{})
-	glRef.BindBuffer(webgl2.ARRAY_BUFFER, &webgl.Buffer{})
-	glRef.BindBuffer(webgl2.ELEMENT_ARRAY_BUFFER, &webgl.Buffer{})
-	//glRef.BindVertexArray(_sp.VAO)
+	canvasContext.Call("bindVertexArray", js.Null())
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
+	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), js.Null())
 
 	_sp.NumberOfElements = len(_sp.Indices)
 
@@ -273,8 +214,6 @@ func (_sp *ShapeBatch) finalize() {
 
 func (_sp *ShapeBatch) Render(cam *Camera2D) {
 	_sp.finalize()
-
-	//glRef.DrawElements(webgl2.LINES, _sp.NumberOfElements, webgl2.UNSIGNED_INT, 0)
 
 	UseShader(&_sp.Shader)
 
@@ -296,15 +235,12 @@ func (_sp *ShapeBatch) Render(cam *Camera2D) {
 		viewMatrixJS.SetIndex(i, js.ValueOf(viewMatrix[i]))
 	}
 
-	viewmatrix_loc := canvasContext.Call("getUniformLocation", _sp.Shader.ShaderProgramID.Value_JS, "view_matrix")
+	viewmatrix_loc := canvasContext.Call("getUniformLocation", _sp.Shader.ShaderProgramID, "view_matrix")
 	canvasContext.Call("uniformMatrix4fv", viewmatrix_loc, false, viewMatrixJS)
-	//setupShaders(&glRef)
-	glRef.BindVertexArray(_sp.VAO)
+	canvasContext.Call("bindVertexArray", _sp.vao)
 
 	canvasContext.Call("drawElements", canvasContext.Get("TRIANGLES"), _sp.NumberOfElements, canvasContext.Get("UNSIGNED_INT"), 0)
 	UnuseShader()
-
-	//glRef.BindVertexArray(nil)
 }
 
 /*
@@ -343,9 +279,8 @@ func NewRenderBatch(_offset, _numberOfVertices int, _texture *Texture2D) RenderB
 }
 
 type SpriteBatch struct {
-	vbo *webgl.Buffer
-	ibo *webgl.Buffer
-	vao *webgl2.VertexArrayObject
+	vbo js.Value
+	vao js.Value
 
 	shader ShaderProgram
 
@@ -358,69 +293,27 @@ func (self *SpriteBatch) Init(_shader_path string) {
 	self.renderBatches = make([]RenderBatch, 0)
 	self.spriteGlyphs = make([]SpriteGlyph, 0)
 
-	self.vao = glRef.CreateVertexArray()
-	glRef.BindVertexArray(self.vao)
+	self.vao = canvasContext.Call("createVertexArray")
+	canvasContext.Call("bindVertexArray", self.vao)
 
-	self.vbo = glRef.CreateBuffer()
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, self.vbo)
+	self.vbo = canvasContext.Call("createBuffer")
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), self.vbo)
 
-	glRef.EnableVertexAttribArray(0)
-	glRef.EnableVertexAttribArray(1)
-	glRef.EnableVertexAttribArray(2)
+	canvasContext.Call("enableVertexAttribArray", 0)
+	canvasContext.Call("enableVertexAttribArray", 1)
+	canvasContext.Call("enableVertexAttribArray", 2)
 
-	glRef.VertexAttribPointer(0, 2, webgl.FLOAT, false, VertexSize, 0)
-	glRef.VertexAttribPointer(1, 4, webgl.UNSIGNED_BYTE, true, VertexSize, 8)
-	glRef.VertexAttribPointer(2, 2, webgl.FLOAT, false, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
+	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
+	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
 
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, &webgl.Buffer{})
-	glRef.BindVertexArray(&webgl2.VertexArrayObject{})
+	canvasContext.Call("bindVertexArray", js.Null())
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
 
-	glRef.DisableVertexAttribArray(0)
-	glRef.DisableVertexAttribArray(1)
-	glRef.DisableVertexAttribArray(2)
+	canvasContext.Call("disableVertexAttribArray", 0)
+	canvasContext.Call("disableVertexAttribArray", 1)
+	canvasContext.Call("disableVertexAttribArray", 2)
 
-	// vertexShader := `#version 300 es
-
-	// precision mediump float;
-
-	// in vec2 coordinates;
-	// in vec4 colors;
-	// in vec2 uv;
-
-	// out vec4 vertex_FragColor;
-	// out vec2 vertex_UV;
-
-	// uniform mat4 projection_matrix;
-	// uniform mat4 view_matrix;
-
-	// void main(void) {
-	// 	vec4 global_position = vec4(0.0);
-	// 	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
-	// 	global_position.z = 0.0;
-	// 	global_position.w = 1.0;
-	// 	gl_Position = global_position;
-
-	// 	vertex_FragColor = colors;
-	// 	vertex_UV = uv;
-	// }`
-
-	// fragmentShader := `#version 300 es
-
-	// precision mediump float;
-
-	// in vec4 vertex_FragColor;
-	// in vec2 vertex_UV;
-
-	// uniform sampler2D genericSampler;
-
-	// out vec4 fragColor;
-
-	// void main(void) {
-	// 	vec4 thisColor = vertex_FragColor * texture(genericSampler, vertex_UV);
-	// 	fragColor = thisColor;
-	// }`
-
-	//self.shader.ParseShader(vertexShader, fragmentShader)
 	if _shader_path == "" {
 		self.shader.ParseShaderFromFile("sprites.shader")
 	} else {
@@ -484,19 +377,18 @@ func (self *SpriteBatch) Render(cam *Camera2D) {
 		viewMatrixJS.SetIndex(i, js.ValueOf(viewMatrix[i]))
 	}
 
-	viewmatrix_loc := canvasContext.Call("getUniformLocation", self.shader.ShaderProgramID.Value_JS, "view_matrix")
+	viewmatrix_loc := canvasContext.Call("getUniformLocation", self.shader.ShaderProgramID, "view_matrix")
 	canvasContext.Call("uniformMatrix4fv", viewmatrix_loc, false, viewMatrixJS)
 
-	glRef.ActiveTexture(webgl.TEXTURE0)
-	glRef.Uniform1i(self.shader.GetUniformLocation("genericSampler"), 0)
+	canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE0"))
+	canvasContext.Call("uniform1i", self.shader.GetUniformLocation("genericSampler"), 0)
 
-	glRef.BindVertexArray(self.vao)
+	canvasContext.Call("bindVertexArray", self.vao)
 	for i := 0; i < len(self.renderBatches); i++ {
-		//glRef.BindTexture(webgl2.TEXTURE_2D, self.renderBatches[i].texture.textureId)
-		canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), self.renderBatches[i].texture.textureId.Value_JS)
-		glRef.DrawArrays(webgl.TRIANGLES, self.renderBatches[i].offset, self.renderBatches[i].numberOfVertices)
+		canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), self.renderBatches[i].texture.textureId)
+		canvasContext.Call("drawArrays", canvasContext.Get("TRIANGLES"), self.renderBatches[i].offset, self.renderBatches[i].numberOfVertices)
 	}
-	glRef.BindVertexArray(&webgl2.VertexArrayObject{})
+	canvasContext.Call("bindVertexArray", js.Null())
 
 	self.renderBatches = self.renderBatches[:0]
 	self.spriteGlyphs = self.spriteGlyphs[:0]
@@ -528,7 +420,7 @@ func (self *SpriteBatch) createRenderBatches() {
 	offset += 6
 
 	for i := 1; i < len(self.spriteGlyphs); i++ {
-		if self.spriteGlyphs[i-1].texture.textureId != self.spriteGlyphs[i].texture.textureId {
+		if !self.spriteGlyphs[i-1].texture.textureId.Equal(self.spriteGlyphs[i].texture.textureId) {
 			self.renderBatches = append(self.renderBatches, NewRenderBatch(offset, 6, self.spriteGlyphs[i].texture))
 		} else {
 			self.renderBatches[len(self.renderBatches)-1].numberOfVertices += 6
@@ -548,12 +440,12 @@ func (self *SpriteBatch) createRenderBatches() {
 		vertexNum++
 		offset += 6
 	}
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, self.vbo)
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), self.vbo)
 
 	jsVerts := vertexBufferToJsVertexBuffer(vertices)
 
 	canvasContext.Call("bufferData", canvasContext.Get("ARRAY_BUFFER"), jsVerts, canvasContext.Get("STATIC_DRAW"))
 
-	glRef.BindBuffer(webgl.ARRAY_BUFFER, &webgl.Buffer{})
+	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
 
 }

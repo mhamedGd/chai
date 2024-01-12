@@ -4,8 +4,7 @@ import (
 	"bufio"
 	"net/http"
 	"strings"
-
-	"github.com/gowebapi/webapi/graphics/webgl"
+	"syscall/js"
 )
 
 type ShaderSource struct {
@@ -16,15 +15,16 @@ type ShaderSource struct {
 type ShaderProgram struct {
 	ShaderSource     ShaderSource
 	AttributesNumber int
-	ShaderProgramID  *webgl.Program
+	ShaderProgramID  js.Value
 }
 
 func UseShader(_sp *ShaderProgram) {
-	glRef.UseProgram(_sp.ShaderProgramID)
+	canvasContext.Call("useProgram", _sp.ShaderProgramID)
 }
 
 func UnuseShader() {
 	//glRef.UseProgram(nil)
+	canvasContext.Call("useProgram", js.Null())
 }
 
 func (_sp *ShaderProgram) ParseShader(_vertexSource string, _fragmentSource string) {
@@ -32,23 +32,11 @@ func (_sp *ShaderProgram) ParseShader(_vertexSource string, _fragmentSource stri
 }
 
 func (_sp *ShaderProgram) ParseShaderFromFile(_filePath string) {
-	/*
-		file, err := os.Open(_filePath)
-		if err != nil {
-			LogF(err.Error())
-		}
-	*/
 	resp, err := http.Get(app_url + "/" + _filePath)
 	if err != nil {
 		LogF(err.Error())
 	}
 	defer resp.Body.Close()
-	/*
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			LogF(err.Error())
-		}
-	*/
 	const VERTEX = 0
 	const FRAGMENT = 1
 	current_type := -1
@@ -80,44 +68,45 @@ func (_sp *ShaderProgram) ParseShaderFromFile(_filePath string) {
 
 func (_sp *ShaderProgram) CreateShaderProgram() {
 	_sp.AttributesNumber = 0
-	_sp.ShaderProgramID = glRef.CreateProgram()
-	vertex_shader := CompileShader(webgl.VERTEX_SHADER, _sp.ShaderSource.vertexShader)
-	fragment_shader := CompileShader(webgl.FRAGMENT_SHADER, _sp.ShaderSource.fragmentShader)
+	_sp.ShaderProgramID = canvasContext.Call("createProgram")
+	vertex_shader := CompileShader(canvasContext.Get("VERTEX_SHADER"), _sp.ShaderSource.vertexShader)
+	fragment_shader := CompileShader(canvasContext.Get("FRAGMENT_SHADER"), _sp.ShaderSource.fragmentShader)
 
-	glRef.AttachShader(_sp.ShaderProgramID, vertex_shader)
-	glRef.AttachShader(_sp.ShaderProgramID, fragment_shader)
+	canvasContext.Call("attachShader", _sp.ShaderProgramID, vertex_shader)
+	canvasContext.Call("attachShader", _sp.ShaderProgramID, fragment_shader)
 
-	glRef.LinkProgram(_sp.ShaderProgramID)
-	if !glRef.GetProgramParameter(_sp.ShaderProgramID, webgl.LINK_STATUS).Bool() {
+	canvasContext.Call("linkProgram", _sp.ShaderProgramID)
+
+	if canvasContext.Call("getProgramParameter", _sp.ShaderProgramID, canvasContext.Get("LINK_STATUS")).IsNull() {
 		//return webgl.Program(js.Null()), errors.New("link failed: " + glRef.GetProgramInfoLog(program))
-		LogF("[LINK FAILED]: " + *glRef.GetProgramInfoLog(_sp.ShaderProgramID))
+		LogF("[LINK FAILED]: " + canvasContext.Call("getProgramInfoLog", _sp.ShaderProgramID).String())
 	}
 }
 
 func (_sp *ShaderProgram) AddAttribute(_attributeName string) {
 	//BindAttribLocation(_sp.ShaderProgramID, _sp.AttributesNumber, _attributeName)
-	glRef.BindAttribLocation(_sp.ShaderProgramID, uint(_sp.AttributesNumber), _attributeName)
+	canvasContext.Call("bindAttribLocation", _sp.ShaderProgramID, _sp.AttributesNumber, _attributeName)
 	_sp.AttributesNumber += 1
 }
 
-func CompileShader(_shaderType uint, _shaderSource string) *webgl.Shader {
-	shader := glRef.CreateShader(_shaderType)
+func CompileShader(_shaderType js.Value, _shaderSource string) js.Value {
+	shader := canvasContext.Call("createShader", _shaderType)
 
-	glRef.ShaderSource(shader, _shaderSource)
-	glRef.CompileShader(shader)
+	canvasContext.Call("shaderSource", shader, _shaderSource)
+	canvasContext.Call("compileShader", shader)
 
-	if !glRef.GetShaderParameter(shader, webgl.COMPILE_STATUS).Bool() {
-		if _shaderType == webgl.FRAGMENT_SHADER {
-			LogF("[FRAGMENT SHADER] compile failure: " + *glRef.GetShaderInfoLog(shader))
+	if canvasContext.Call("getShaderParameter", shader, canvasContext.Get("COMPILE_STATUS")).IsNull() {
+		if _shaderType.Equal(canvasContext.Get("FRAGMENT_SHADER")) {
+			LogF("[FRAGMENT SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
 
-		} else if _shaderType == webgl.VERTEX_SHADER {
-			LogF("[VERTEX SHADER] compile failure: " + *glRef.GetShaderInfoLog(shader))
+		} else if _shaderType.Equal(canvasContext.Get("VERTEX_SHADER")) {
+			LogF("[VERTEX SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
 		}
 	}
 
 	return shader
 }
 
-func (_sp *ShaderProgram) GetUniformLocation(_uniformName string) *webgl.UniformLocation {
-	return glRef.GetUniformLocation(_sp.ShaderProgramID, _uniformName)
+func (_sp *ShaderProgram) GetUniformLocation(_uniformName string) js.Value {
+	return canvasContext.Call("getUniformLocation", _sp.ShaderProgramID, _uniformName)
 }

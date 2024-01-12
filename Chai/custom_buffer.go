@@ -42,3 +42,15 @@ func int32BufferToJsInt32Buffer(_buffer []int32) js.Value {
 
 	return jsElements
 }
+
+func pixelBufferToJsPixelBubffer(_buffer []Pixel) js.Value {
+	jsPixels := js.Global().Get("Uint8Array").New(len(_buffer) * 4)
+	var pixelsBytes []byte
+	headerPixels := (*reflect.SliceHeader)(unsafe.Pointer(&pixelsBytes))
+	headerPixels.Cap = cap(_buffer) * 4
+	headerPixels.Len = len(_buffer) * 4
+	headerPixels.Data = uintptr(unsafe.Pointer(&_buffer[0]))
+
+	js.CopyBytesToJS(jsPixels, pixelsBytes)
+	return jsPixels
+}
