@@ -11,14 +11,14 @@ type App struct {
 	Height   int
 	Title    string
 	OnStart  func()
-	OnUpdate func(float64)
+	OnUpdate func(float32)
 	OnDraw   func()
 	OnEvent  func(*AppEvent)
 }
 
 // Used to make the update function only available in the local App struct, to the whole file
 var tempStart func()
-var tempUpdate func(float64)
+var tempUpdate func(float32)
 var tempDraw func()
 
 /*
@@ -43,8 +43,32 @@ var Sprites SpriteBatch
 
 var started bool = false
 
+func (_app *App) fillDefaults() {
+	if _app.OnStart == nil {
+		_app.OnStart = func() {
+
+		}
+	}
+	if _app.OnUpdate == nil {
+		_app.OnUpdate = func(f float32) {
+
+		}
+	}
+	if _app.OnDraw == nil {
+		_app.OnDraw = func() {
+
+		}
+	}
+	if _app.OnEvent == nil {
+		_app.OnEvent = func(ae *AppEvent) {
+
+		}
+	}
+}
+
 func Run(_app *App) {
 	appRef = _app
+	_app.fillDefaults()
 	app_url = js.Global().Get("location").Get("href").String()
 
 	js.Global().Get("document").Set("title", _app.Title)
@@ -128,18 +152,25 @@ func Run(_app *App) {
 --------- (2)
 */
 
-// func JSStart(this js.Value, inputs []js.Value) interface{} {
-// 	tempStart()
-// 	return nil
-// }
+//	func JSStart(this js.Value, inputs []js.Value) interface{} {
+//		tempStart()
+//		return nil
+//	}
+var deltaTime float32
+
+const CAP_DELTA_TIME float32 = 50.0 / 1000.0
 
 func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
+	deltaTime = float32(inputs[0].Float())
+	if deltaTime > CAP_DELTA_TIME {
+		deltaTime = CAP_DELTA_TIME
+	}
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
-	tempUpdate(inputs[0].Float())
+	tempUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
 	return nil

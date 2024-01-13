@@ -6,6 +6,8 @@ import (
 	chai "github.com/mhamedGd/Chai"
 )
 
+var game chai.App
+
 func main() {
 	var rotation float32 = 90.0
 	var midPoint chai.Vector2f = chai.Vector2fZero
@@ -23,7 +25,7 @@ func main() {
 	var fontAtlas chai.FontBatchAtlas
 	var englishFontAtlas chai.FontBatchAtlas
 
-	game := chai.App{
+	game = chai.App{
 		Width:  1920,
 		Height: 1080,
 		Title:  "Test",
@@ -85,7 +87,7 @@ func main() {
 
 			chai.ScaleView(4)
 		},
-		OnUpdate: func(dt float64) {
+		OnUpdate: func(dt float32) {
 			zoomAxis := 500.0 * float32(dt) * (chai.GetActionStrength("Zoom In") - chai.GetActionStrength("Zoom Out"))
 			chai.IncreaseScaleU(zoomAxis)
 			inputAxis.Y = chai.GetActionStrength("Up") - (chai.GetActionStrength("Down"))
@@ -94,7 +96,7 @@ func main() {
 			velocity.X = chai.LerpFloat32(velocity.X, (inputAxis.X+dpad_modifier.X)*speed, float32(dt)*2.5)
 			velocity.Y = chai.LerpFloat32(velocity.Y, (inputAxis.Y+dpad_modifier.Y)*speed, float32(dt)*2.5)
 
-			rotation -= float32(dt*600.0) * velocity.X
+			rotation -= dt * 600.0 * velocity.X
 			rotation = float32(math.Mod(float64(rotation), 360))
 			direction = chai.Vector2fRight.Rotate(rotation, chai.Vector2fZero)
 
