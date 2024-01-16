@@ -5,7 +5,7 @@
 <br><br>
 # Chai
 
-    A simple framework for prototyping software and video games. Mainly created for small scaled projects.
+>   A simple framework for prototyping software and video games. Mainly created for small scaled projects.
 
 
 Written in ***GO***
