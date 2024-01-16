@@ -86,6 +86,7 @@ func main() {
 			englishFontAtlas = chai.LoadFontToAtlas("Assets/m5x7.ttf", &english_font_settings)
 
 			chai.ScaleView(4)
+			chai.WarningF("This is a warning!!")
 		},
 		OnUpdate: func(dt float32) {
 			zoomAxis := 500.0 * float32(dt) * (chai.GetActionStrength("Zoom In") - chai.GetActionStrength("Zoom Out"))
@@ -119,6 +120,9 @@ func main() {
 			englishFontAtlas.Render()
 		},
 		OnEvent: func(ae *chai.AppEvent) {
+			if ae.Type == chai.JS_KEYDOWN {
+				chai.LogF("%v", ae.Key)
+			}
 		},
 	}
 

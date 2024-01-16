@@ -35,6 +35,7 @@ USING THE EventFunc[T] type ------- (1)
 
 var currentWidth, currentHeight int
 var canvas js.Value
+var debug_console js.Value
 var appRef *App
 
 var Cam Camera2D
@@ -67,6 +68,12 @@ func (_app *App) fillDefaults() {
 }
 
 func Run(_app *App) {
+	defer func() {
+		if r := recover(); r != nil {
+			ErrorF("PANICKED - %v", r)
+		}
+	}()
+
 	appRef = _app
 	_app.fillDefaults()
 	app_url = js.Global().Get("location").Get("href").String()
@@ -74,6 +81,7 @@ func Run(_app *App) {
 	js.Global().Get("document").Set("title", _app.Title)
 
 	canvas = js.Global().Get("document").Call("getElementById", "viewport")
+	debug_console = js.Global().Get("document").Call("querySelector", ".debug-console")
 
 	canvasContext = canvas.Call("getContext", "webgl2")
 	Assert(!canvasContext.IsNull(), "CANVAS: Failed to Get Context")
@@ -106,6 +114,8 @@ func Run(_app *App) {
 	Cam.Update(*_app)
 
 	Shapes.Init()
+	Assert(Shapes.Initialized, "Shapes Rendering was not initialized successfully")
+
 	Sprites.Init("")
 	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 

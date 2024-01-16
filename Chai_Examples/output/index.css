@@ -1,3 +1,5 @@
+
+
 :root {
     --dpad-spacing-pos:  45px;
     --dpad-spacing-neg: -45px;
@@ -27,6 +29,35 @@ body{
 
 #viewport {
     width: 90vw;
+}
+
+.debug-console-container {
+    position: absolute;
+    width: 40vw;
+    height: 30vh;
+    outline: 1px solid black;
+    overflow: scroll;
+    top: 0;
+    --mask-image-content: linear-gradient(
+        to bottom,
+        transparent,
+        black 0,
+        black 90%,
+        transparent
+    );
+    mask-image: linear-gradient(to bottom, transparent, black 0, black calc(100% - 100px), transparent);
+}
+
+.debug-console {
+    padding-left: 12px;
+    line-height: 24px;
+    display: flex;
+    flex-direction: column-reverse;
+    margin-top: 5px;
+}
+
+.debug-line {
+    margin-top: 0;
 }
 
 .mobile-controller {

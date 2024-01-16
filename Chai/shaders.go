@@ -79,7 +79,7 @@ func (_sp *ShaderProgram) CreateShaderProgram() {
 
 	if canvasContext.Call("getProgramParameter", _sp.ShaderProgramID, canvasContext.Get("LINK_STATUS")).IsNull() {
 		//return webgl.Program(js.Null()), errors.New("link failed: " + glRef.GetProgramInfoLog(program))
-		LogF("[LINK FAILED]: " + canvasContext.Call("getProgramInfoLog", _sp.ShaderProgramID).String())
+		WarningF("[LINK FAILED]: " + canvasContext.Call("getProgramInfoLog", _sp.ShaderProgramID).String())
 	}
 }
 
@@ -97,10 +97,10 @@ func CompileShader(_shaderType js.Value, _shaderSource string) js.Value {
 
 	if canvasContext.Call("getShaderParameter", shader, canvasContext.Get("COMPILE_STATUS")).IsNull() {
 		if _shaderType.Equal(canvasContext.Get("FRAGMENT_SHADER")) {
-			LogF("[FRAGMENT SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
+			WarningF("[FRAGMENT SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
 
 		} else if _shaderType.Equal(canvasContext.Get("VERTEX_SHADER")) {
-			LogF("[VERTEX SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
+			WarningF("[VERTEX SHADER] compile failure: " + canvasContext.Call("getShaderInfoLog", shader).String())
 		}
 	}
 

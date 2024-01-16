@@ -42,6 +42,7 @@ type ShapeBatch struct {
 	NumberOfElements int
 	Shader           ShaderProgram
 	LineWidth        float32
+	Initialized      bool
 }
 
 func (_shapesB *ShapeBatch) Init() {
@@ -79,7 +80,7 @@ func (_shapesB *ShapeBatch) Init() {
 	_shapesB.Shader.CreateShaderProgram()
 	_shapesB.Shader.AddAttribute("coordinates")
 	_shapesB.Shader.AddAttribute("colors")
-
+	_shapesB.Initialized = true
 }
 
 func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
