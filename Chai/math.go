@@ -200,6 +200,7 @@ func NewVector2f(x, y float32) Vector2f {
 var Vector2fZero Vector2f = Vector2f{0.0, 0.0}
 var Vector2fOne Vector2f = Vector2f{1.0, 1.0}
 var Vector2fRight Vector2f = Vector2f{1.0, 0.0}
+var Vector2fUp Vector2f = Vector2f{0.0, 1.0}
 
 func (v1 Vector2f) Equal(v2 *Vector2f) bool {
 	return v1.X == v2.X && v1.Y == v2.Y
