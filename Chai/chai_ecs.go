@@ -41,8 +41,8 @@ type EcsEngine struct {
 	idCounter Id
 }
 
-func NewEcsEngine() *EcsEngine {
-	return &EcsEngine{
+func NewEcsEngine() EcsEngine {
+	return EcsEngine{
 		reg:       make(map[string]*BasicStorage),
 		entities:  make([]*EcsEntity, 0),
 		idCounter: 0,
@@ -54,7 +54,11 @@ func (e *EcsEngine) NewEntity() EcsEntity {
 	e.idCounter++
 	ent := EcsEntity{id: id}
 	e.entities = append(e.entities, &ent)
-	return *e.entities[len(e.entities)-1]
+	return ent
+}
+
+func (e *EcsEngine) WriteToEntity(index int, ent EcsEntity) {
+	e.entities[index] = &ent
 }
 
 func name(t interface{}) string {
@@ -77,7 +81,7 @@ func GetStorage(e *EcsEngine, t interface{}) *BasicStorage {
 	return storage
 }
 
-func Read(e *EcsEngine, entity *EcsEntity, val Component) bool {
+func ReadComponent(e *EcsEngine, entity *EcsEntity, val Component) bool {
 	storage := GetStorage(e, val)
 	newVal, ok := storage.read(entity)
 	if ok {
@@ -86,7 +90,7 @@ func Read(e *EcsEngine, entity *EcsEntity, val Component) bool {
 	return ok
 }
 
-func Write(e *EcsEngine, entity *EcsEntity, val interface{}) {
+func WriteComponent(e *EcsEngine, entity *EcsEntity, val interface{}) {
 	storage := GetStorage(e, val)
 	storage.write(entity, val)
 }
@@ -95,23 +99,23 @@ func Each(engine *EcsEngine, val interface{}, f func(entity *EcsEntity, a interf
 	storage := GetStorage(engine, val)
 	for entity, a := range storage.list {
 		f(entity, a)
-		LogF("%v", *entity)
-
 	}
 }
 
-func EachAll(engine *EcsEngine, f func(entity *EcsEntity)) {
+// If change anything in the entity then call WriteToEntity(index, new entity)
+func EachAll(engine *EcsEngine, f func(entity *EcsEntity, entity_index int)) {
 	// Terrible Solution, Try to connect engine.entities to engine.reg
-	// for _, ent := range engine.entities {
-	// 	f(ent)
-
-	// }
-	for _, storage := range engine.reg {
-		for entity, _ := range storage.list {
-			f(entity)
-		}
+	for index, ent := range engine.entities {
+		f(ent, index)
 	}
+	// for _, storage := range engine.reg {
+	// 	for entity := range storage.list {
+	// 		f(entity)
+	// 	}
+	// }
 }
+
+var current_scene *Scene
 
 type EcsEntity struct {
 	id  Id
@@ -120,9 +124,89 @@ type EcsEntity struct {
 }
 
 type EcsSystem interface {
-	Update(dt float32) func(float32)
+	Update(dt float32)
+	GetEcsEngine() *EcsEngine
+}
+
+type EcsSystemImpl struct {
+	EcsSystem
+}
+
+func (sys *EcsSystemImpl) GetEcsEngine() *EcsEngine {
+	return &current_scene.Ecs_engine
 }
 
 type Scene struct {
-	systems []EcsSystem
+	Ecs_engine     EcsEngine
+	entities       []EcsEntity
+	update_systems []EcsSystem
+	render_systems []EcsSystem
+	OnSceneStart   func()
+}
+
+func (scene *Scene) GetNumberOfEntities() int {
+	return len(scene.entities)
+}
+
+func NewScene() Scene {
+	return Scene{
+		Ecs_engine:     NewEcsEngine(),
+		entities:       make([]EcsEntity, 0),
+		update_systems: make([]EcsSystem, 0),
+		render_systems: make([]EcsSystem, 0),
+	}
+}
+
+func ChangeScene(scene *Scene) {
+	if current_scene != nil {
+		current_scene.terminateScene()
+	}
+	current_scene = scene
+	current_scene.OnSceneStart()
+}
+
+func (scene *Scene) terminateScene() {
+	scene.entities = scene.entities[:0]
+	scene.update_systems = scene.update_systems[:0]
+	scene.render_systems = scene.render_systems[:0]
+}
+
+func (scene *Scene) NewEntity(pos Vector2f, rot float32) *EcsEntity {
+	ent := scene.Ecs_engine.NewEntity()
+	ent.Pos = pos
+	ent.Rot = rot
+	scene.entities = append(scene.entities, ent)
+	return &ent
+}
+
+func (scene *Scene) GetLastEntity() *EcsEntity {
+	return &scene.entities[len(scene.entities)-1]
+}
+
+func (scene *Scene) WriteComponentToLastEntity(component interface{}) {
+	WriteComponent(&scene.Ecs_engine, &scene.entities[len(scene.entities)-1], component)
+}
+
+func (scene *Scene) NewUpdateSystem(sys EcsSystem) {
+	scene.update_systems = append(scene.update_systems, sys)
+}
+
+func (scene *Scene) NewRenderSystem(sys EcsSystem) {
+	scene.render_systems = append(scene.render_systems, sys)
+}
+
+func (scene *Scene) OnUpdate(dt float32) {
+	for _, sys := range scene.update_systems {
+		sys.Update(dt)
+	}
+}
+
+func (scene *Scene) OnDraw() {
+	for _, sys := range scene.render_systems {
+		sys.Update(0.0)
+	}
+}
+
+func GetCurrentScene() *Scene {
+	return current_scene
 }

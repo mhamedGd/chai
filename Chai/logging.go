@@ -5,19 +5,24 @@ import (
 	"time"
 )
 
+var logs_num int
+
 func LogF(_format_string string, args ...interface{}) {
 	fmt.Printf(_format_string+"\n", args...)
-	consoleLogFormattedString(_format_string, "", args...)
+	//consoleLogFormattedString(_format_string, "", args...)
+	logs_num++
 }
 
 func WarningF(_format_string string, args ...interface{}) {
 	fmt.Printf(_format_string+"\n", args...)
-	consoleLogFormattedString(_format_string, "style='color:#DBD51D'", args...)
+	//consoleLogFormattedString(_format_string, "style='color:#DBD51D'", args...)
+	logs_num++
 }
 
 func ErrorF(_format_string string, args ...interface{}) {
 	fmt.Printf(_format_string+"\n", args...)
-	consoleLogFormattedString(_format_string, "style='color:red'", args...)
+	//consoleLogFormattedString(_format_string, "style='color:red'", args...)
+	logs_num++
 }
 
 // Print out a message if condition is false

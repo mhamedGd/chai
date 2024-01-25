@@ -289,6 +289,12 @@ type SpriteBatch struct {
 	spriteGlyphs  []SpriteGlyph
 }
 
+func (self *SpriteBatch) Reset() {
+	self.renderBatches = self.renderBatches[:0]
+	self.spriteGlyphs = self.spriteGlyphs[:0]
+	//`self.Init("")
+}
+
 func (self *SpriteBatch) Init(_shader_path string) {
 
 	self.renderBatches = make([]RenderBatch, 0)

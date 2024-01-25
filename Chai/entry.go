@@ -68,11 +68,11 @@ func (_app *App) fillDefaults() {
 }
 
 func Run(_app *App) {
-	defer func() {
-		if r := recover(); r != nil {
-			ErrorF("PANICKED - %v", r)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		ErrorF("PANICKED - %v", r)
+	// 	}
+	// }()
 
 	appRef = _app
 	_app.fillDefaults()
@@ -181,6 +181,7 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
 	tempUpdate(deltaTime)
+	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
 	return nil
@@ -196,6 +197,7 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 
 	//Shapes.DrawLine(NewVector2f(0.0, 0.0), NewVector2f(2.5, 0.5), RGBA8{255, 255, 0, 255})
 	tempDraw()
+	current_scene.OnDraw()
 	Sprites.Render(&Cam)
 	Shapes.Render(&Cam)
 	return nil
