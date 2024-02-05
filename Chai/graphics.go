@@ -14,6 +14,38 @@ type RGBA8 struct {
 	r, g, b, a uint8
 }
 
+func (rgba8 *RGBA8) SetColorR(r uint8) {
+	rgba8.r = r
+}
+
+func (rgba8 *RGBA8) SetColorRFloat32(r float32) {
+	rgba8.r = Float1ToUint8_255(r)
+}
+
+func (rgba8 *RGBA8) SetColorG(g uint8) {
+	rgba8.g = g
+}
+
+func (rgba8 *RGBA8) SetColorGFloat32(g float32) {
+	rgba8.g = Float1ToUint8_255(g)
+}
+
+func (rgba8 *RGBA8) SetColorB(b uint8) {
+	rgba8.b = b
+}
+
+func (rgba8 *RGBA8) SetColorBFloat32(b float32) {
+	rgba8.b = Float1ToUint8_255(b)
+}
+
+func (rgba8 *RGBA8) SetColorA(a uint8) {
+	rgba8.a = a
+}
+
+func (rgba8 *RGBA8) SetColorAFloat32(a float32) {
+	rgba8.a = Float1ToUint8_255(a)
+}
+
 func NewRGBA8(r, g, b, a uint8) RGBA8 {
 	return RGBA8{r, g, b, a}
 }
@@ -184,6 +216,10 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 }
 
 func (_sp *ShapeBatch) finalize() {
+	if len(_sp.Vertices) == 0 {
+		_sp.NumberOfElements = 0
+		return
+	}
 	canvasContext.Call("bindVertexArray", _sp.vao)
 
 	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices)

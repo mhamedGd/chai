@@ -44,6 +44,12 @@ var Sprites SpriteBatch
 
 var started bool = false
 
+var physics_world PhysicsWorld
+
+func GetPhysicsWorld() *PhysicsWorld {
+	return &physics_world
+}
+
 func (_app *App) fillDefaults() {
 	if _app.OnStart == nil {
 		_app.OnStart = func() {
@@ -97,6 +103,7 @@ func Run(_app *App) {
 	tempDraw = _app.OnDraw
 
 	InitInputs()
+	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.1))
 
 	//js.Global().Set("js_start", js.FuncOf(JSStart))
 	js.Global().Set("js_update", js.FuncOf(JSUpdate))
@@ -166,6 +173,8 @@ func Run(_app *App) {
 //		tempStart()
 //		return nil
 //	}
+
+var ElapsedTime float32
 var deltaTime float32
 
 const CAP_DELTA_TIME float32 = 50.0 / 1000.0
@@ -184,6 +193,8 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
+	ElapsedTime += deltaTime
+	physics_world.box2dWorld.Step(float64(deltaTime), 6, 12)
 	return nil
 }
 

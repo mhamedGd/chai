@@ -10,8 +10,9 @@ var game chai.App
 var scene_one chai.Scene
 
 var scene_two chai.Scene
-var sprite_render_system SpriteRenderSystem = SpriteRenderSystem{}
-var shape_render_system ShapesRenderingSystem = ShapesRenderingSystem{}
+var sprite_render_system chai.SpriteRenderOriginSystem = chai.SpriteRenderOriginSystem{Offset: chai.Vector2fZero}
+var triangle_render_system chai.TriangleRenderSystem = chai.TriangleRenderSystem{}
+var rect_render_system chai.RectRenderSystem = chai.RectRenderSystem{}
 var keybinds_system KeyBindsSystem = KeyBindsSystem{}
 var move_system MoveSystem = MoveSystem{}
 
@@ -24,9 +25,6 @@ func main() {
 	var fontAtlas chai.FontBatchAtlas
 	var englishFontAtlas chai.FontBatchAtlas
 
-	scene_one.OnSceneStart = func() {
-
-	}
 	game = chai.App{
 		Width:  1920,
 		Height: 1080,
@@ -42,6 +40,7 @@ func main() {
 			chai.BindInput("Zoom In", chai.KEY_E)
 			chai.BindInput("Zoom Out", chai.KEY_Q)
 			chai.BindInput("Change Scene", chai.KEY_L)
+			chai.BindInput("Delete Component", chai.KEY_M)
 
 			chai.Shapes.LineWidth = .5
 
@@ -86,8 +85,9 @@ func main() {
 			fontAtlas = chai.LoadFontToAtlas("Assets/Alfont.otf", &font_settings)
 			englishFontAtlas = chai.LoadFontToAtlas("Assets/m5x7.ttf", &english_font_settings)
 
-			sprite_render_system._sp = &chai.Sprites
-			shape_render_system._sh = &chai.Shapes
+			sprite_render_system.Sprites = &chai.Sprites
+			triangle_render_system.Shapes = &chai.Shapes
+			rect_render_system.Shapes = &chai.Shapes
 
 			scene_one = chai.NewScene()
 			scene_two = chai.NewScene()
@@ -114,10 +114,8 @@ func main() {
 
 			//chai.Shapes.DrawTriangleRotated(midPoint, chai.NewVector2f(2.0, 4.0), chai.NewRGBA8(255, 0, 0, 255), rotation)
 			//chai.Sprites.DrawSpriteOrigin(chai.NewVector2f(2, 0.0), chai.Vector2fZero, chai.Vector2fOne, &bgl_texture, chai.NewRGBA8(255, 255, 255, 255))
-			// for i := 0; i < 1; i++ {
-			// 	fontAtlas.DrawString("ابدأ اللعب ٢/٤", chai.Vector2fOne.AddXY(0.0, 0.0), 0.5, chai.WHITE)
-			// 	englishFontAtlas.DrawString("Baghdad Game Lab\nBaghdad Game Lab", chai.Vector2fOne.AddXY(0.0, 35.0), 0.5, chai.WHITE)
-			// }
+			fontAtlas.DrawString("ابدأ اللعب ٢/٤", chai.Vector2fOne.AddXY(-150.0, 0.0), 0.5, chai.WHITE)
+			englishFontAtlas.DrawString("Baghdad Game Lab\nBaghdad Game Lab", chai.Vector2fOne.AddXY(0.0, 35.0), 0.5, chai.WHITE)
 
 			// sprite_render_system.Update(0.0)
 
@@ -144,7 +142,7 @@ type KeyBindsSystem struct {
 }
 
 func (kb *KeyBindsSystem) Update(dt float32) {
-	chai.Each(&chai.GetCurrentScene().Ecs_engine, KeyBinds{}, func(entity *chai.EcsEntity, a interface{}) {
+	chai.EachEntity(KeyBinds{}, func(entity *chai.EcsEntity, a interface{}) {
 		keybinds := a.(KeyBinds)
 		keybinds.axes.X = chai.GetActionStrength("Right") - (chai.GetActionStrength("Left"))
 		keybinds.axes.Y = chai.GetActionStrength("Up") - (chai.GetActionStrength("Down"))
@@ -162,23 +160,26 @@ type MoveSystem struct {
 	chai.EcsSystemImpl
 }
 
+const player_speed float32 = 40.0
+
 func (ms *MoveSystem) Update(dt float32) {
-	chai.Each(&chai.GetCurrentScene().Ecs_engine, MoveComponent{}, func(entity *chai.EcsEntity, a interface{}) {
+	chai.EachEntity(MoveComponent{}, func(entity *chai.EcsEntity, a interface{}) {
 
 		movecomp := a.(MoveComponent)
+		dynamic := chai.DynamicBodyComponent{}
+		chai.ReadComponent(ms.GetEcsEngine(), entity, &dynamic)
 
 		bindings := KeyBinds{}
 		chai.ReadComponent(ms.GetEcsEngine(), entity, &bindings)
 
 		movecomp.velocity.X = chai.LerpFloat32(movecomp.velocity.X, (bindings.axes.X), dt*2.5)
 		movecomp.velocity.Y = chai.LerpFloat32(movecomp.velocity.Y, (bindings.axes.Y), dt*2.5)
-		entity.Rot -= dt * 600.0 * movecomp.velocity.X
+		entity.Rot -= dt * 400.0 * movecomp.velocity.X
 		entity.Rot = float32(math.Mod(float64(entity.Rot), 360))
 
 		direction := chai.Vector2fRight.Rotate(entity.Rot, chai.Vector2fZero)
 
-		entity.Pos.Y += movecomp.velocity.Y * direction.Y
-		entity.Pos.X += movecomp.velocity.Y * direction.X
+		dynamic.SetLinearVelocity(movecomp.velocity.Y*direction.X*player_speed, movecomp.velocity.Y*direction.Y*player_speed)
 
 		chai.ScrollTo(entity.Pos)
 
@@ -186,45 +187,8 @@ func (ms *MoveSystem) Update(dt float32) {
 	})
 }
 
-type Sprite struct {
-	chai.Component
-	texture chai.Texture2D
-}
-
-func (t *Sprite) ComponentSet(val interface{}) { *t = val.(Sprite) }
-
-type SpriteRenderSystem struct {
-	chai.EcsSystemImpl
-	_sp *chai.SpriteBatch
-}
-
-func (_render *SpriteRenderSystem) Update(dt float32) {
-	chai.Each(&chai.GetCurrentScene().Ecs_engine, Sprite{}, func(entity *chai.EcsEntity, a interface{}) {
-		sprite := a.(Sprite)
-
-		_render._sp.DrawSpriteOrigin(entity.Pos, chai.Vector2fZero, chai.Vector2fOne, &sprite.texture, chai.WHITE)
-	})
-}
-
-type Shape struct {
-	chai.Component
-}
-
-func (t *Shape) ComponentSet(val interface{}) { *t = val.(Shape) }
-
-type ShapesRenderingSystem struct {
-	chai.EcsSystemImpl
-	_sh *chai.ShapeBatch
-}
-
-func (_render *ShapesRenderingSystem) Update(dt float32) {
-	chai.Each(&chai.GetCurrentScene().Ecs_engine, Shape{}, func(entity *chai.EcsEntity, a interface{}) {
-		_render._sh.DrawTriangleRotated(entity.Pos, chai.NewVector2f(2.0, 4.0), chai.NewRGBA8(255, 0, 0, 255), entity.Rot)
-	})
-}
-
 func UpdateAllEntities(dt float32, _ecs_engine *chai.EcsEngine) {
-	chai.EachAll(&chai.GetCurrentScene().Ecs_engine, func(entity *chai.EcsEntity, index int) {
+	chai.EachEntityAll(&chai.GetCurrentScene().Ecs_engine, func(entity *chai.EcsEntity, index int) {
 		//y_axis := chai.GetActionStrength("Up") - (chai.GetActionStrength("Down"))
 
 		// velo.X = chai.LerpFloat32(velo.X, (x_axis), dt*2.5)
@@ -234,45 +198,136 @@ func UpdateAllEntities(dt float32, _ecs_engine *chai.EcsEngine) {
 	})
 }
 
-func StartSceneOne() {
-	scene_one.NewRenderSystem(&sprite_render_system)
-	scene_one.NewRenderSystem(&shape_render_system)
+type UpdateColorWithAnimSystem struct {
+	chai.EcsSystemImpl
+}
 
+func (ms *UpdateColorWithAnimSystem) Update(dt float32) {
+	chai.EachEntity(chai.AnimationComponent[float32]{}, func(entity *chai.EcsEntity, a interface{}) {
+		anims := a.(chai.AnimationComponent[float32])
+		// entity.Pos.Y = float32(tween.GetCurrentValue())
+		sprite := chai.SpriteComponent{}
+		chai.ReadComponent(ms.GetEcsEngine(), entity, &sprite)
+		sprite.Tint.SetColorAFloat32(anims.GetCurrentValue("Color Change"))
+		chai.WriteComponent(ms.GetEcsEngine(), entity, sprite)
+	})
+}
+
+type UpdatePosWithAnimSystem struct {
+	chai.EcsSystemImpl
+}
+
+func (ms *UpdatePosWithAnimSystem) Update(dt float32) {
+	chai.EachEntity(chai.AnimationComponent[float32]{}, func(entity *chai.EcsEntity, a interface{}) {
+		anims := a.(chai.AnimationComponent[float32])
+
+		entity.Pos.Y = anims.GetCurrentValue("Move")
+	})
+}
+
+var tween_animator_float32_system chai.TweenAnimatorSystemFloat32 = chai.TweenAnimatorSystemFloat32{}
+var tween_animator_vector2i_system chai.TweenAnimatorSystemVector2i = chai.TweenAnimatorSystemVector2i{}
+var update_color_with_anim_system UpdateColorWithAnimSystem = UpdateColorWithAnimSystem{}
+var update_pos_with_anim_system UpdatePosWithAnimSystem = UpdatePosWithAnimSystem{}
+
+var cat_sprites_anim_system chai.SpriteAnimationSystem = chai.SpriteAnimationSystem{Offset: chai.NewVector2f(0.0, 12.0)}
+
+var dynamic_body_update_system chai.DynamicBodyUpdateSystem = chai.DynamicBodyUpdateSystem{}
+
+func StartSceneOne() {
+	scene_one.NewRenderSystem(&triangle_render_system)
+	scene_one.NewRenderSystem(&rect_render_system)
+	scene_one.NewRenderSystem(&cat_sprites_anim_system)
+	scene_one.NewRenderSystem(&sprite_render_system)
+
+	scene_one.NewUpdateSystem(&dynamic_body_update_system)
 	scene_one.NewUpdateSystem(&keybinds_system)
 	scene_one.NewUpdateSystem(&move_system)
+	scene_one.NewUpdateSystem(&tween_animator_float32_system)
+	scene_one.NewUpdateSystem(&tween_animator_vector2i_system)
+	scene_one.NewUpdateSystem(&update_pos_with_anim_system)
+	scene_one.NewUpdateSystem(&update_color_with_anim_system)
+	// scene_one.NewUpdateSystem(&update_color_with_anim_system)
 
-	for i := 0; i < 2000; i++ {
-		scene_one.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), 90.0)
-		scene_one.WriteComponentToLastEntity(Sprite{texture: bgl_texture})
+	//scene_one.NewEntity(chai.NewVector2f(0.0, 0.0), 0.0)
+	//scene_one.WriteComponentToLastEntity(catAnim)
+
+	//scene_one.WriteComponentToLastEntity(chai.SpriteAnimation{CurrentAnimation: "Cat"})
+
+	for i := 0; i < 10; i++ {
+		catAnim := chai.NewAnimationComponentVector2i()
+		catAnim.NewTweenAnimationVector2i("Cat")
+		catAnim.RegisterKeyframe("Cat", 0.0, chai.Vector2i{X: 0, Y: 0})
+		catAnim.RegisterKeyframe("Cat", 0.5, chai.Vector2i{X: 1, Y: 0})
+		catAnim.RegisterKeyframe("Cat", 1.0, chai.Vector2i{X: 2, Y: 0})
+		catAnim.RegisterKeyframe("Cat", 1.5, chai.Vector2i{X: 3, Y: 0})
+		ent := scene_one.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), chai.Vector2fOne.Scale(12.0), 90.0)
+		scene_one.WriteComponentToLastEntity(chai.NewDynamicBody(ent, 20.0, 0.20, 1.0, chai.GetPhysicsWorld()))
+		if i%2 == 0 {
+			catAnim.Play("Cat")
+		}
+		scene_one.WriteComponentToLastEntity(catAnim)
+		scene_one.WriteComponentToLastEntity(chai.SpriteAnimation{CurrentAnimation: "Cat"})
 	}
 
 	//Player
-	scene_one.NewEntity(chai.Vector2fZero, 90.0)
-	scene_one.WriteComponentToLastEntity(Sprite{texture: bgl_texture})
-	scene_one.WriteComponentToLastEntity(Shape{})
+	ent := scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne.Scale(12.0), 90.0)
+	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
+	scene_one.WriteComponentToLastEntity(chai.TriangleRenderComponent{Dimensions: chai.Vector2fOne.MultpXY(6.0, 8.0)})
+	scene_one.WriteComponentToLastEntity(chai.NewDynamicBody(ent, 12.0, 0.0, 0.0, chai.GetPhysicsWorld()))
 	scene_one.WriteComponentToLastEntity(KeyBinds{})
 	scene_one.WriteComponentToLastEntity(MoveComponent{})
 
+	scene_one.NewEntity(chai.NewVector2f(0.0, 25.0), chai.Vector2fOne, 0.0)
+	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
+	animation := chai.NewAnimationComponentFloat32()
+	animation.NewTweenAnimationFloat32("Color Change")
+	animation.RegisterKeyframe("Color Change", 0.0, 0.0)
+	animation.RegisterKeyframe("Color Change", 1.5, 1.0)
+	animation.RegisterKeyframe("Color Change", 3.0, 0.0)
+
+	animation.NewTweenAnimationFloat32("Move")
+	animation.RegisterKeyframe("Move", 0.0, 0.0)
+	animation.RegisterKeyframe("Move", 1.5, 25.0)
+	animation.RegisterKeyframe("Move", 3.0, 0.0)
+
+	animation.PlaySimultaneous("Color Change", "Move")
+
+	scene_one.WriteComponentToLastEntity(animation)
+
+	catSpriteSheet := chai.LoadPng("Assets/Cat Sprite Sheet.png")
+	tileset := chai.NewTileSet(chai.Vector2fZero, catSpriteSheet, 8, 10)
+	cat_sprites_anim_system.TileSet = tileset
+	cat_sprites_anim_system.Sprites = &chai.Sprites
+	cat_sprites_anim_system.SpriteScale = 0.125
+
+	ent = scene_one.NewEntity(chai.NewVector2f(0.0, -70.0), chai.NewVector2f(500.0, 25.0), 0.0)
+	scene_one.WriteComponentToLastEntity(chai.NewStaticBody(ent, 0.3, chai.GetPhysicsWorld()))
+	scene_one.WriteComponentToLastEntity(chai.RectRenderComponent{})
+	// colorAnimation := chai.NewTweenAnimationUint8()
+	// colorAnimation.RegisterKeyframe(0.0, 255)
+	// colorAnimation.RegisterKeyframe(1.5, 0)
+	// colorAnimation.RegisterKeyframe(3.0, 255)
+	// scene_one.WriteComponentToLastEntity(colorAnimation)
 }
 
 func StartSceneTwo() {
 	scene_two.NewRenderSystem(&sprite_render_system)
-	scene_two.NewRenderSystem(&shape_render_system)
+	scene_two.NewRenderSystem(&triangle_render_system)
 
 	scene_two.NewUpdateSystem(&keybinds_system)
 	scene_two.NewUpdateSystem(&move_system)
 
-	for i := 0; i < 2000; i++ {
-		scene_two.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), 90.0)
-		scene_two.WriteComponentToLastEntity(Sprite{texture: bgl_texture})
-	}
+	// for i := 0; i < 2000; i++ {
+	// 	scene_two.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), 90.0)
+	// 	scene_two.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture})
+	// }
 
 	//Player
-	scene_two.NewEntity(chai.Vector2fZero, 90.0)
-	scene_two.WriteComponentToLastEntity(Sprite{texture: bgl_texture})
-	scene_two.WriteComponentToLastEntity(Shape{})
+	scene_two.NewEntity(chai.Vector2fZero, chai.Vector2fOne, 90.0)
+	scene_two.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
+	scene_two.WriteComponentToLastEntity(chai.TriangleRenderComponent{Dimensions: chai.NewVector2f(12.0, 16.0)})
 	scene_two.WriteComponentToLastEntity(KeyBinds{})
 	scene_two.WriteComponentToLastEntity(MoveComponent{})
-	chai.LogF("Number of ents: %v", scene_two.GetNumberOfEntities())
 
 }

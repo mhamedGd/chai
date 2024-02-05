@@ -1,3 +1,5 @@
+github.com/ByteArena/box2d v1.0.2 h1:f7f9KEQWhCs1n516DMLzi5w6u0MeeE78Mes4fWMcj9k=
+github.com/ByteArena/box2d v1.0.2/go.mod h1:LzEuxY9iCz+tskfWCY3o0ywYBRafDDugdSj+/YGI6sE=
 github.com/udhos/goglmath v1.0.0 h1:H8zOIiK05prJ1Espde1fA5BeiPdzdl1WcZ0GFhGOAbM=
 github.com/udhos/goglmath v1.0.0/go.mod h1:0ridDcbvZrz1sZzuztWOO5OCK6M7cTRLTFRGDW3wjoA=
 github.com/unitoftime/cod v0.0.0-20230616173404-085cf4fe3918 h1:C1W4LPOwKCBq0cAzb81508ePBIfAR9ecP9GBR5zi/AI=

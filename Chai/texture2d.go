@@ -7,6 +7,24 @@ import (
 	"syscall/js"
 )
 
+type TileSet struct {
+	texture                   Texture2D
+	totalRows, totalColumns   int
+	spriteWidth, spriteHeight int
+	startPosition             Vector2f
+}
+
+func NewTileSet(_startPosition Vector2f, _texture Texture2D, _columns, _rows int) TileSet {
+	return TileSet{
+		texture:       _texture,
+		totalRows:     _rows,
+		totalColumns:  _columns,
+		spriteWidth:   _texture.Width / _columns,
+		spriteHeight:  _texture.Height / _rows,
+		startPosition: _startPosition,
+	}
+}
+
 type Texture2D struct {
 	Width, Height, bpp int
 	textureId          js.Value

@@ -55,6 +55,20 @@ func LerpFloat64(_a, _b, _t float64) float64 {
 	return _a + (_b-_a)*_t
 }
 
+func LerpInt(_a, _b int, _t float32) int {
+	return _a + (_b-_a)*int(_t*float32(_b-_a))/(_b-_a)
+}
+
+func LerpUint8(_a, _b uint8, _t float32) uint8 {
+	LogF("%v", _a+(_b-_a)*uint8(_t*255))
+
+	return _a + (_b-_a)*uint8(_t*255)
+}
+
+func Float1ToUint8_255(_inp float32) uint8 {
+	return uint8(_inp * 255.0)
+}
+
 /*
 ############## LERP - LERP - LERP #################################################
 ###################################################################################
@@ -141,6 +155,13 @@ func MaxInt(_v1, _v2 int) int {
 	return _v2
 }
 
+func MaxUint8(_v1, _v2 uint8) uint8 {
+	if _v1 >= _v2 {
+		return _v1
+	}
+	return _v2
+}
+
 /*
 ############## MIN MAX - MIN MAX - MIN MAX ########################################
 ###################################################################################
@@ -153,6 +174,10 @@ func MaxInt(_v1, _v2 int) int {
 
 func AbsFloat32(_v float32) float32 {
 	return SignFloat32(_v) * _v
+}
+
+func AbsInt(_v int) int {
+	return SignInt(_v) * _v
 }
 
 /*
@@ -174,6 +199,17 @@ func SignFloat32(_v float32) float32 {
 	}
 
 	return 0.0
+}
+
+func SignInt(_v int) int {
+	switch {
+	case _v < 0:
+		return -1
+	case _v > 0:
+		return 1
+	}
+
+	return 0
 }
 
 /*
@@ -237,6 +273,11 @@ func (v1 Vector2f) SubtractXY(x, y float32) Vector2f {
 func (v1 Vector2f) Multp(v2 Vector2f) Vector2f {
 	return Vector2f{X: v1.X * v2.X, Y: v1.Y * v2.Y}
 }
+
+func (v1 Vector2f) MultpXY(x, y float32) Vector2f {
+	return Vector2f{X: v1.X * x, Y: v1.Y * y}
+}
+
 func (v1 Vector2f) Div(v2 Vector2f) Vector2f {
 	return Vector2f{X: v1.X / v2.X, Y: v1.Y / v2.Y}
 }
@@ -307,3 +348,116 @@ func Vector2fMidpoint(v1, v2 Vector2f) Vector2f {
 func (v Vector2f) ToString() string {
 	return fmt.Sprint(v.X, v.Y)
 }
+
+type Vector2i struct {
+	X, Y int
+}
+
+func NewVector2i(x, y int) Vector2i {
+	return Vector2i{
+		x, y,
+	}
+}
+
+func (v1 *Vector2i) Equal(v2 *Vector2i) bool {
+	return v1.X == v2.X && v1.Y == v2.Y
+}
+
+func (v1 Vector2i) Add(v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X + v2.X, Y: v1.Y + v2.Y}
+}
+
+func (v1 Vector2i) AddXY(x, y int) Vector2i {
+	return Vector2i{X: v1.X + x, Y: v1.Y + y}
+}
+func (v1 Vector2i) Subtract(v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X - v2.X, Y: v1.Y - v2.Y}
+}
+
+func (v1 Vector2i) SubtractXY(x, y int) Vector2i {
+	return Vector2i{X: v1.X - x, Y: v1.Y - y}
+}
+
+func (v1 Vector2i) Multp(v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X * v2.X, Y: v1.Y * v2.Y}
+}
+
+func (v1 Vector2i) MultpXY(x, y int) Vector2i {
+	return Vector2i{X: v1.X * x, Y: v1.Y * y}
+}
+
+func (v1 Vector2i) Div(v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X / v2.X, Y: v1.Y / v2.Y}
+}
+
+func (v Vector2i) Scale(_value float32) Vector2i {
+	return Vector2i{X: int(float32(v.X) * _value), Y: int(float32(v.Y) * _value)}
+}
+
+func AbsVector2i(_v *Vector2i) Vector2i {
+	return Vector2i{
+		AbsInt(_v.X), AbsInt(_v.Y),
+	}
+}
+
+func (v *Vector2i) Length() int {
+	return int(math.Sqrt(float64((v.X * v.X) + (v.Y * v.Y))))
+}
+
+func (v *Vector2i) LengthSquared() int {
+	return (v.X * v.X) + (v.Y * v.Y)
+}
+
+func (v Vector2i) Normalize() Vector2i {
+	leng := v.Length()
+	return Vector2i{v.X / leng, v.Y / leng}
+}
+
+func DotProductInt(v1, v2 Vector2i) int {
+	return v1.X*v2.X + v1.Y*v2.Y
+}
+
+func (v *Vector2i) Perpendicular() Vector2i {
+	return Vector2i{-v.Y, v.X}
+}
+
+func (v *Vector2i) Angle() int {
+	return int(math.Atan2(float64(v.Y), float64(v.X)))
+}
+
+func (v Vector2i) Rotate(_angle float32, _pivot Vector2i) Vector2i {
+	anglePolar := _angle * math.Pi / 180.0
+	x := v.X
+	y := v.Y
+
+	v.X = (x-_pivot.X)*int(math.Cos(float64(anglePolar))) - (y-_pivot.Y)*int(math.Sin(float64(anglePolar))) + _pivot.X
+	v.Y = (x-_pivot.X)*int(math.Sin(float64(anglePolar))) + (y-_pivot.Y)*int(math.Cos(float64(anglePolar))) + _pivot.Y
+	return Vector2i{
+		v.X, v.Y,
+	}
+}
+
+func (v Vector2i) RotateCenter(_angle float32) Vector2i {
+	anglePolar := _angle * math.Pi / 180.0
+	x := v.X
+	y := v.Y
+
+	v.X = (x)*int(math.Cos(float64(anglePolar))) - (y)*int(math.Sin(float64(anglePolar)))
+	v.Y = (x)*int(math.Sin(float64(anglePolar))) + (y)*int(math.Cos(float64(anglePolar)))
+	return Vector2i{
+		v.X, v.Y,
+	}
+}
+
+func Vector2fMidpointInt(v1, v2 Vector2i) Vector2i {
+	return v1.Add(v2).Scale(0.5)
+}
+
+func (v Vector2i) ToString() string {
+	return fmt.Sprint(v.X, v.Y)
+}
+
+/*
+############## VECTOR2  - VECTOR2 #################################################
+###################################################################################
+*/

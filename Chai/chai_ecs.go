@@ -35,6 +35,10 @@ func (s *BasicStorage) write(entity *EcsEntity, val interface{}) {
 	s.list[entity] = val
 }
 
+func (s *BasicStorage) delete(entity *EcsEntity, val interface{}) {
+	delete(s.list, entity)
+}
+
 type EcsEngine struct {
 	reg       map[string]*BasicStorage
 	entities  []*EcsEntity
@@ -95,15 +99,20 @@ func WriteComponent(e *EcsEngine, entity *EcsEntity, val interface{}) {
 	storage.write(entity, val)
 }
 
-func Each(engine *EcsEngine, val interface{}, f func(entity *EcsEntity, a interface{})) {
-	storage := GetStorage(engine, val)
+func DeleteComponent(e *EcsEngine, entity *EcsEntity, val interface{}) {
+	storage := GetStorage(e, val)
+	storage.delete(entity, val)
+}
+
+func EachEntity(val interface{}, f func(entity *EcsEntity, a interface{})) {
+	storage := GetStorage(&current_scene.Ecs_engine, val)
 	for entity, a := range storage.list {
 		f(entity, a)
 	}
 }
 
 // If change anything in the entity then call WriteToEntity(index, new entity)
-func EachAll(engine *EcsEngine, f func(entity *EcsEntity, entity_index int)) {
+func EachEntityAll(engine *EcsEngine, f func(entity *EcsEntity, entity_index int)) {
 	// Terrible Solution, Try to connect engine.entities to engine.reg
 	for index, ent := range engine.entities {
 		f(ent, index)
@@ -118,9 +127,10 @@ func EachAll(engine *EcsEngine, f func(entity *EcsEntity, entity_index int)) {
 var current_scene *Scene
 
 type EcsEntity struct {
-	id  Id
-	Pos Vector2f
-	Rot float32
+	id         Id
+	Pos        Vector2f
+	Rot        float32
+	Dimensions Vector2f
 }
 
 type EcsSystem interface {
@@ -171,10 +181,11 @@ func (scene *Scene) terminateScene() {
 	scene.render_systems = scene.render_systems[:0]
 }
 
-func (scene *Scene) NewEntity(pos Vector2f, rot float32) *EcsEntity {
+func (scene *Scene) NewEntity(pos Vector2f, dim Vector2f, rot float32) *EcsEntity {
 	ent := scene.Ecs_engine.NewEntity()
 	ent.Pos = pos
 	ent.Rot = rot
+	ent.Dimensions = dim
 	scene.entities = append(scene.entities, ent)
 	return &ent
 }
@@ -185,6 +196,10 @@ func (scene *Scene) GetLastEntity() *EcsEntity {
 
 func (scene *Scene) WriteComponentToLastEntity(component interface{}) {
 	WriteComponent(&scene.Ecs_engine, &scene.entities[len(scene.entities)-1], component)
+}
+
+func (scene *Scene) DeleteComponentFromLastEntity(component interface{}) {
+	DeleteComponent(&scene.Ecs_engine, &scene.entities[len(scene.entities)-1], component)
 }
 
 func (scene *Scene) NewUpdateSystem(sys EcsSystem) {
@@ -209,4 +224,82 @@ func (scene *Scene) OnDraw() {
 
 func GetCurrentScene() *Scene {
 	return current_scene
+}
+
+type SpriteComponent struct {
+	Component
+	Texture Texture2D
+	Tint    RGBA8
+}
+
+func (t *SpriteComponent) ComponentSet(val interface{}) { *t = val.(SpriteComponent) }
+
+type SpriteRenderOriginSystem struct {
+	EcsSystemImpl
+	Sprites *SpriteBatch
+	Offset  Vector2f
+}
+
+func (_render *SpriteRenderOriginSystem) Update(dt float32) {
+	EachEntity(SpriteComponent{}, func(entity *EcsEntity, a interface{}) {
+		sprite := a.(SpriteComponent)
+		halfDim := NewVector2f(_render.Offset.X*float32(sprite.Texture.Width)/2.0, _render.Offset.Y*float32(sprite.Texture.Height)/2.0)
+		_render.Sprites.DrawSpriteOrigin(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, &sprite.Texture, sprite.Tint)
+	})
+}
+
+type LineRenderComponent struct {
+	Component
+	FromPoint Vector2f
+	ToPoint   Vector2f
+}
+
+func (t *LineRenderComponent) ComponentSet(val interface{}) { *t = val.(LineRenderComponent) }
+
+type LineRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (_render *LineRenderSystem) Update(dt float32) {
+	EachEntity(LineRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		lineComp := a.(LineRenderComponent)
+		_render.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
+	})
+}
+
+type TriangleRenderComponent struct {
+	Component
+	Dimensions Vector2f
+}
+
+func (t *TriangleRenderComponent) ComponentSet(val interface{}) { *t = val.(TriangleRenderComponent) }
+
+type TriangleRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (_render *TriangleRenderSystem) Update(dt float32) {
+	EachEntity(TriangleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		lineComp := a.(TriangleRenderComponent)
+		_render.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, entity.Rot)
+	})
+}
+
+type RectRenderComponent struct {
+	Component
+}
+
+func (t *RectRenderComponent) ComponentSet(val interface{}) { *t = val.(RectRenderComponent) }
+
+type RectRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (_render *RectRenderSystem) Update(dt float32) {
+	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		_render.Shapes.DrawRect(entity.Pos, entity.Dimensions, WHITE)
+	})
 }
