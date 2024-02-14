@@ -38,6 +38,13 @@ var canvas js.Value
 var debug_console js.Value
 var appRef *App
 
+func GetCanvasWidth() int {
+	return canvas.Get("width").Int()
+}
+func GetCanvasHeigth() int {
+	return canvas.Get("height").Int()
+}
+
 var Cam Camera2D
 var Shapes ShapeBatch
 var Sprites SpriteBatch
@@ -45,6 +52,9 @@ var Sprites SpriteBatch
 var started bool = false
 
 var physics_world PhysicsWorld
+
+var MouseCanvasPos Vector2f
+var canvasBoundingClientRect js.Value
 
 func GetPhysicsWorld() *PhysicsWorld {
 	return &physics_world
@@ -104,6 +114,7 @@ func Run(_app *App) {
 
 	InitInputs()
 	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.1))
+	physics_world.box2dWorld.SetContactListener(worldContactListener)
 
 	//js.Global().Set("js_start", js.FuncOf(JSStart))
 	js.Global().Set("js_update", js.FuncOf(JSUpdate))
@@ -139,6 +150,10 @@ func Run(_app *App) {
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_MOUSEMOVED, func(ae *AppEvent) {
+		canvasBoundingClientRect = canvas.Call("getBoundingClientRect")
+
+		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
+		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
 		_app.OnEvent(ae)
 	})
 
@@ -150,7 +165,6 @@ func Run(_app *App) {
 			event.RemoveListener(print_s)
 	*/
 
-	//UnuseShader()
 	//custom_func("STRING") ------- (1)
 	_app.OnStart()
 	if !started {

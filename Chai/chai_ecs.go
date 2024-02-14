@@ -244,7 +244,7 @@ func (_render *SpriteRenderOriginSystem) Update(dt float32) {
 	EachEntity(SpriteComponent{}, func(entity *EcsEntity, a interface{}) {
 		sprite := a.(SpriteComponent)
 		halfDim := NewVector2f(_render.Offset.X*float32(sprite.Texture.Width)/2.0, _render.Offset.Y*float32(sprite.Texture.Height)/2.0)
-		_render.Sprites.DrawSpriteOrigin(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, &sprite.Texture, sprite.Tint)
+		_render.Sprites.DrawSpriteOriginRotated(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, &sprite.Texture, sprite.Tint, entity.Rot)
 	})
 }
 
@@ -283,7 +283,7 @@ type TriangleRenderSystem struct {
 func (_render *TriangleRenderSystem) Update(dt float32) {
 	EachEntity(TriangleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
 		lineComp := a.(TriangleRenderComponent)
-		_render.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, entity.Rot)
+		_render.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, float32(entity.Rot))
 	})
 }
 
@@ -300,6 +300,23 @@ type RectRenderSystem struct {
 
 func (_render *RectRenderSystem) Update(dt float32) {
 	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		_render.Shapes.DrawRect(entity.Pos, entity.Dimensions, WHITE)
+		_render.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, WHITE, entity.Rot)
+	})
+}
+
+type CircleRenderComponent struct {
+	Component
+}
+
+func (t *CircleRenderComponent) ComponentSet(val interface{}) { *t = val.(CircleRenderComponent) }
+
+type CircleRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (_render *CircleRenderSystem) Update(dt float32) {
+	EachEntity(CircleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		_render.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, WHITE)
 	})
 }

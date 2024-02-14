@@ -95,3 +95,11 @@ func RegulateScale() {
 	Cam.scale = ClampFloat32(Cam.scale, minCamScale, maxCamScale)
 	Cam.mustUpdate = true
 }
+
+func GetMouseWorldPosition() Vector2f {
+	screenPoint := MouseCanvasPos
+	screenPoint = screenPoint.Subtract(NewVector2f(float32(GetCanvasWidth())/2.0, float32(GetCanvasHeigth())/2.0))
+	screenPoint = screenPoint.Scale(1 / Cam.scale)
+	screenPoint = screenPoint.Add(Cam.position)
+	return screenPoint
+}

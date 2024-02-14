@@ -1,7 +1,5 @@
 package chai
 
-import "github.com/ByteArena/box2d"
-
 type TweenValue[T any] struct {
 	timeStep float32
 	value    T
@@ -249,67 +247,7 @@ func (sa *SpriteAnimationSystem) Update(dt float32) {
 		_uv2.X = _uv1.X + float32(sa.TileSet.spriteWidth)/float32(sa.TileSet.texture.Width)
 		_uv2.Y = _uv1.Y + float32(sa.TileSet.spriteHeight)/float32(sa.TileSet.texture.Height)
 
-		sa.Sprites.DrawSpriteOriginScaled(entity.Pos.Add(sa.Offset), _uv1, _uv2, sa.SpriteScale, &sa.TileSet.texture, WHITE)
+		sa.Sprites.DrawSpriteOriginScaledRotated(entity.Pos.Add(sa.Offset).Rotate(entity.Rot, entity.Pos), _uv1, _uv2, sa.SpriteScale, &sa.TileSet.texture, WHITE, entity.Rot)
 	})
 
-}
-
-type DynamicBodyComponent struct {
-	Active          bool
-	LinearVelocity  Vector2f
-	AngularVelocity float32
-	phy_body        *PhysicsBody
-}
-
-func (dc *DynamicBodyComponent) SetLinearVelocity(x_velo, y_velo float32) {
-	dc.phy_body.body.M_linearVelocity = BoxVector2XY(x_velo, y_velo)
-}
-
-func (t *DynamicBodyComponent) ComponentSet(val interface{}) { *t = val.(DynamicBodyComponent) }
-
-func NewDynamicBody(ent *EcsEntity, density, friction, gravity_scale float32, phy_world *PhysicsWorld) DynamicBodyComponent {
-	bodyDef := box2d.MakeB2BodyDef()
-	bodyDef.Position = BoxVector2f(ent.Pos)
-	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.AllowSleep = false
-	bodyDef.FixedRotation = false
-	bodyDef.GravityScale = float64(gravity_scale)
-
-	return DynamicBodyComponent{
-		Active:   true,
-		phy_body: newPhysicsBody(density, friction, phy_world, &bodyDef, ent.Dimensions.Scale(0.5)),
-	}
-}
-
-type DynamicBodyUpdateSystem struct {
-	EcsSystemImpl
-}
-
-func (ds *DynamicBodyUpdateSystem) Update(dt float32) {
-	EachEntity(DynamicBodyComponent{}, func(entity *EcsEntity, a interface{}) {
-		dComp := a.(DynamicBodyComponent)
-		entity.Pos.X = float32(dComp.phy_body.GetPosition().X)
-		entity.Pos.Y = float32(dComp.phy_body.GetPosition().Y)
-		Shapes.DrawRect(entity.Pos, entity.Dimensions, WHITE)
-	})
-}
-
-type StaticBodyComponent struct {
-	Active   bool
-	phy_body *PhysicsBody
-}
-
-func (t *StaticBodyComponent) ComponentSet(val interface{}) { *t = val.(StaticBodyComponent) }
-
-func NewStaticBody(ent *EcsEntity, friction float32, phy_world *PhysicsWorld) StaticBodyComponent {
-	bodyDef := box2d.MakeB2BodyDef()
-	bodyDef.Position = BoxVector2f(ent.Pos)
-	bodyDef.Type = box2d.B2BodyType.B2_staticBody
-	bodyDef.AllowSleep = false
-	bodyDef.FixedRotation = true
-
-	return StaticBodyComponent{
-		Active:   true,
-		phy_body: newPhysicsBody(0.0, friction, phy_world, &bodyDef, ent.Dimensions.Scale(0.5)),
-	}
 }

@@ -1,5 +1,7 @@
 package chai
 
+import "syscall/js"
+
 var inputs_map map[string]ChaiInput
 
 var current_frame_pressed_inputs map[string]ChaiInput
@@ -103,4 +105,10 @@ func IsJustReleased(_input_name string) bool {
 	_, curr_ok := current_frame_pressed_inputs[_input_name]
 	_, prev_ok := prev_frame_pressed_inputs[_input_name]
 	return !curr_ok && prev_ok
+}
+
+func GetMousePosition(evt js.Value) Vector2f {
+	rect := canvas.Call("getBoundingClientRect")
+	return NewVector2f((float32(evt.Get("clientX").Int())-float32(rect.Get("left").Int()))/float32(rect.Get("width").Int())*float32(canvas.Get("width").Int()),
+		float32(canvas.Get("height").Int())-(float32(evt.Get("clientY").Int())-float32(rect.Get("top").Int()))/float32(rect.Get("height").Int())*float32(canvas.Get("height").Int()))
 }

@@ -150,6 +150,18 @@ func (_sp *ShapeBatch) DrawRect(_center, _dimensions Vector2f, _color RGBA8) {
 	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center), _color)
 }
 
+func (_sp *ShapeBatch) DrawRectRotated(_center, _dimensions Vector2f, _color RGBA8, _angle float32) {
+	offsetX := _dimensions.Scale(0.5).X
+	offsetY := _dimensions.Scale(0.5).Y
+
+	lineDifference := _sp.LineWidth
+
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, offsetY).Add(_center).Rotate(_angle, _center), _color)
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), _color)
+	_sp.DrawLine(NewVector2f(offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _color)
+	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _color)
+}
+
 func (_sp *ShapeBatch) DrawTriangle(_center, _dimensions Vector2f, _color RGBA8) {
 	numOfVertices := 3
 
@@ -173,6 +185,21 @@ func (_sp *ShapeBatch) DrawTriangleRotated(_center, _dimensions Vector2f, _color
 		angle := (float32(i) / float32(3.0)) * 2.0 * PI
 		pos[i] = NewVector2f(_center.X+float32(math.Cos(float64(angle)))*_dimensions.Y, _center.Y+float32(math.Sin(float64(angle)))*_dimensions.X)
 		pos[i] = pos[i].Rotate(rotation, _center)
+	}
+
+	for i := 0; i < numOfVertices-1; i++ {
+		_sp.DrawLine(pos[i], pos[i+1], _color)
+	}
+	_sp.DrawLine(pos[numOfVertices-1], pos[0], _color)
+}
+
+func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA8) {
+	numOfVertices := 16
+
+	pos := [16]Vector2f{}
+	for i := 0; i < numOfVertices; i++ {
+		angle := (float32(i) / float32(numOfVertices)) * 2.0 * PI
+		pos[i] = NewVector2f(_center.X+float32(math.Cos(float64(angle)))*_radius, _center.Y+float32(math.Sin(float64(angle)))*_radius)
 	}
 
 	for i := 0; i < numOfVertices-1; i++ {
@@ -306,6 +333,21 @@ func NewSpriteGlyph(_pos, _dimensions, _uv1 Vector2f, _uv2 Vector2f, _texture *T
 	return tempGlyph
 }
 
+func NewSpriteGlyphRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) SpriteGlyph {
+	var tempGlyph SpriteGlyph
+
+	halfDim := _dimensions.Scale(0.5)
+
+	tempGlyph.bottomleft = NewVertex(_pos.Subtract(halfDim).Rotate(_rotation, _pos), NewVector2f(_uv1.X, _uv2.Y), _tint)
+	tempGlyph.topleft = NewVertex(_pos.Add(NewVector2f(-halfDim.X, halfDim.Y)).Rotate(_rotation, _pos), _uv1, _tint)
+	tempGlyph.topright = NewVertex(_pos.Add(halfDim).Rotate(_rotation, _pos), NewVector2f(_uv2.X, _uv1.Y), _tint)
+	tempGlyph.bottomright = NewVertex(_pos.Add(NewVector2f(halfDim.X, -halfDim.Y)).Rotate(_rotation, _pos), _uv2, _tint)
+
+	tempGlyph.texture = _texture
+
+	return tempGlyph
+}
+
 type RenderBatch struct {
 	offset, numberOfVertices int
 	texture                  *Texture2D
@@ -390,6 +432,14 @@ func (self *SpriteBatch) DrawSpriteBottomRight(_pos, _dimensions, _uv1, _uv2 Vec
 func (self *SpriteBatch) DrawSpriteBottomLeftOrigin(_pos, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
 	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Subtract(NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(0.5)), NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, _texture, _tint))
 
+}
+
+func (self *SpriteBatch) DrawSpriteOriginRotated(_center, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, _texture, _tint, _rotation))
+}
+
+func (self *SpriteBatch) DrawSpriteOriginScaledRotated(_center, _uv1, _uv2 Vector2f, _scale float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale), _uv1, _uv2, _texture, _tint, _rotation))
 }
 
 func (self *SpriteBatch) finalize() {

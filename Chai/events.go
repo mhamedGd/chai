@@ -11,6 +11,10 @@ type ChaiEvent[T any] struct {
 	listeners []EventFunc[T]
 }
 
+func (e *ChaiEvent[T]) init() {
+	e.listeners = make([]EventFunc[T], 0)
+}
+
 func (e *ChaiEvent[T]) AddListener(ef EventFunc[T]) {
 	e.listeners = append(e.listeners, ef)
 }
@@ -91,6 +95,10 @@ type AppEvent struct {
 	CtrlKey  bool
 	ShiftKey bool
 	/ -------------------------- */
+}
+
+func (ap *AppEvent) GetJsEvent() js.Value {
+	return js.Value(ap.event)
 }
 
 func (e *AppEvent) PreventDefault() {
