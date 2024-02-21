@@ -9,8 +9,8 @@ const Type_BodyDynamic PhysicsBodyType = 1
 
 type ColliderShape uint8
 
-const Shape_CircleCollider ColliderShape = 0
-const Shape_RectCollider ColliderShape = 1
+const Shape_CircleBody ColliderShape = 0
+const Shape_RectBody ColliderShape = 1
 
 func BoxVector2f(v Vector2f) box2d.B2Vec2 {
 	return box2d.MakeB2Vec2(float64(v.X), float64(v.Y))
@@ -49,18 +49,18 @@ type PhysicsBody struct {
 	Debug_Tint       RGBA8
 }
 
-func newPhysicsBody(bodyType PhysicsBodyType, colliderShape ColliderShape, ent *EcsEntity, density, friction float32, isTrigger bool, phy_world *PhysicsWorld, bodyDef *box2d.B2BodyDef, bodySize Vector2f) *PhysicsBody {
+func newPhysicsBody(bodyType PhysicsBodyType, colliderShape ColliderShape, ent *EcsEntity, density, friction, restitution float32, isTrigger bool, bodyDef *box2d.B2BodyDef, bodySize Vector2f) *PhysicsBody {
 	phyBody := PhysicsBody{}
-	body := phy_world.box2dWorld.CreateBody(bodyDef)
+	body := GetPhysicsWorld().box2dWorld.CreateBody(bodyDef)
 
 	fd := box2d.MakeB2FixtureDef()
 	switch colliderShape {
-	case Shape_RectCollider:
+	case Shape_RectBody:
 		shape := box2d.MakeB2PolygonShape()
 		shape.SetAsBox(float64(bodySize.X)/2.0, float64(bodySize.Y)/2.0)
 		fd.Shape = &shape
 		break
-	case Shape_CircleCollider:
+	case Shape_CircleBody:
 		shape := box2d.MakeB2CircleShape()
 		shape.SetRadius(float64(bodySize.X))
 		fd.Shape = &shape
@@ -70,8 +70,10 @@ func newPhysicsBody(bodyType PhysicsBodyType, colliderShape ColliderShape, ent *
 
 	fd.Density = float64(density)
 	fd.Friction = float64(friction)
+	fd.Restitution = float64(restitution)
 	fixture := body.CreateFixtureFromDef(&fd)
 	fixture.SetSensor(isTrigger)
+
 	phyBody = PhysicsBody{
 		BodyType:      bodyType,
 		ColliderShape: colliderShape,
@@ -136,15 +138,36 @@ type DynamicBodyComponent struct {
 	phy_body *PhysicsBody
 }
 
+type DynamicBodySettings struct {
+	BodySize     Vector2f
+	BodyShape    ColliderShape
+	Mass         float32
+	Friction     float32
+	Restitution  float32
+	GravityScale float32
+}
+
 func (dc *DynamicBodyComponent) GetPhyiscsBody() *PhysicsBody {
 	return dc.phy_body
+}
+
+func (dc *DynamicBodyComponent) SetPosition(newPos Vector2f) {
+	dc.phy_body.body.SetTransform(BoxVector2f(newPos), dc.phy_body.body.GetAngle())
+}
+
+func (dc *DynamicBodyComponent) SetPositionXY(x, y float32) {
+	dc.phy_body.body.SetTransform(BoxVector2XY(x, y), dc.phy_body.body.GetAngle())
 }
 
 func (dc *DynamicBodyComponent) GetLinearVelocity() Vector2f {
 	return NewVector2f(float32(dc.phy_body.body.M_linearVelocity.X), float32(dc.phy_body.body.M_linearVelocity.Y))
 }
 
-func (dc *DynamicBodyComponent) SetLinearVelocity(x_velo, y_velo float32) {
+func (dc *DynamicBodyComponent) SetLinearVelocity(velo Vector2f) {
+	dc.phy_body.body.M_linearVelocity = BoxVector2f(velo)
+}
+
+func (dc *DynamicBodyComponent) SetLinearVelocityXY(x_velo, y_velo float32) {
 	dc.phy_body.body.M_linearVelocity = BoxVector2XY(x_velo, y_velo)
 }
 
@@ -172,9 +195,14 @@ func (dc *DynamicBodyComponent) ApplyAngularForce(_force float32) {
 	dc.phy_body.body.ApplyAngularImpulse(float64(_force), true)
 }
 
+func (dc *DynamicBodyComponent) SetActive(_value bool) {
+	dc.Active = _value
+	dc.phy_body.body.SetActive(_value)
+}
+
 func (t *DynamicBodyComponent) ComponentSet(val interface{}) { *t = val.(DynamicBodyComponent) }
 
-func NewDynamicBody(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector2f, density, friction, gravity_scale float32, phy_world *PhysicsWorld) DynamicBodyComponent {
+func NewDynamicBody(ent *EcsEntity, bodySettings DynamicBodySettings) DynamicBodyComponent {
 
 	dynamicComp := DynamicBodyComponent{}
 	bodyDef := box2d.MakeB2BodyDef()
@@ -184,11 +212,11 @@ func NewDynamicBody(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 	bodyDef.AllowSleep = false
 	bodyDef.FixedRotation = false
-	bodyDef.GravityScale = float64(gravity_scale)
+	bodyDef.GravityScale = float64(bodySettings.GravityScale)
 
 	dynamicComp = DynamicBodyComponent{
 		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyDynamic, colliderShape, ent, density, friction, false, phy_world, &bodyDef, bodySize),
+		phy_body: newPhysicsBody(Type_BodyDynamic, bodySettings.BodyShape, ent, bodySettings.Mass, bodySettings.Friction, bodySettings.Restitution, false, &bodyDef, bodySettings.BodySize.SubtractXY(0.01, 0.01)),
 	}
 	return dynamicComp
 }
@@ -210,10 +238,10 @@ func (ds *DynamicBodyUpdateSystem) Update(dt float32) {
 		// 	Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, dComp.phy_body.Debug_Tint, entity.Rot)
 		// }
 		switch dComp.phy_body.ColliderShape {
-		case Shape_RectCollider:
+		case Shape_RectBody:
 			Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, dComp.phy_body.Debug_Tint, entity.Rot)
 			break
-		case Shape_CircleCollider:
+		case Shape_CircleBody:
 			Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, dComp.phy_body.Debug_Tint)
 			break
 		}
@@ -225,13 +253,19 @@ type StaticBodyComponent struct {
 	phy_body *PhysicsBody
 }
 
+type StaticBodySettings struct {
+	BodySize  Vector2f
+	BodyShape ColliderShape
+	Friction  float32
+}
+
 func (t *StaticBodyComponent) ComponentSet(val interface{}) { *t = val.(StaticBodyComponent) }
 
 func (sb *StaticBodyComponent) GetPhyiscsBody() *PhysicsBody {
 	return sb.phy_body
 }
 
-func NewStaticBody(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector2f, friction float32, phy_world *PhysicsWorld) StaticBodyComponent {
+func NewStaticBody(ent *EcsEntity, bodySettings StaticBodySettings) StaticBodyComponent {
 	staticComp := StaticBodyComponent{}
 	bodyDef := box2d.MakeB2BodyDef()
 	bodyDef.Position = BoxVector2f(ent.Pos)
@@ -242,12 +276,12 @@ func NewStaticBody(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector2
 
 	staticComp = StaticBodyComponent{
 		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyStatic, colliderShape, ent, 0.0, friction, false, phy_world, &bodyDef, bodySize),
+		phy_body: newPhysicsBody(Type_BodyStatic, bodySettings.BodyShape, ent, 0.0, bodySettings.Friction, 0.0, false, &bodyDef, bodySettings.BodySize),
 	}
 	return staticComp
 }
 
-func NewTriggerArea(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector2f, phy_world *PhysicsWorld) StaticBodyComponent {
+func NewTriggerArea(ent *EcsEntity, bodySettings StaticBodySettings) StaticBodyComponent {
 	staticComp := StaticBodyComponent{}
 	bodyDef := box2d.MakeB2BodyDef()
 	bodyDef.Position = BoxVector2f(ent.Pos)
@@ -258,7 +292,55 @@ func NewTriggerArea(ent *EcsEntity, colliderShape ColliderShape, bodySize Vector
 
 	staticComp = StaticBodyComponent{
 		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyStatic, colliderShape, ent, 0.0, 0.0, true, phy_world, &bodyDef, bodySize),
+		phy_body: newPhysicsBody(Type_BodyStatic, bodySettings.BodyShape, ent, 0.0, 0.0, 0.0, true, &bodyDef, bodySettings.BodySize),
 	}
 	return staticComp
+}
+
+type BoxCastQueryCallback struct {
+	FoundBodies []*box2d.B2Body
+}
+
+func (callback *BoxCastQueryCallback) ReportFixture(fixture *box2d.B2Fixture) bool {
+	callback.FoundBodies = append(callback.FoundBodies, fixture.GetBody())
+
+	return true
+}
+
+func OverlapBox(lowerLeft, topRight Vector2f) (*PhysicsBody, bool) {
+	aabb := box2d.MakeB2AABB()
+	aabb.LowerBound.Set(float64(lowerLeft.X), float64(lowerLeft.Y))
+	aabb.UpperBound.Set(float64(topRight.X), float64(topRight.Y))
+
+	bodiesQuery := &BoxCastQueryCallback{}
+	bodiesQuery.FoundBodies = make([]*box2d.B2Body, 0)
+
+	physics_world.box2dWorld.QueryAABB(bodiesQuery.ReportFixture, aabb)
+	if len(bodiesQuery.FoundBodies) > 0 {
+		return bodiesQuery.FoundBodies[0].GetUserData().(*PhysicsBody), true
+	} else {
+		return nil, false
+	}
+}
+
+type RaycastHit struct {
+	HasHit      bool
+	HitPosition Vector2f
+	HitBody     *PhysicsBody
+	Normal      Vector2f
+}
+
+func Raycast(origin, direction Vector2f, distance float32) RaycastHit {
+	hit := RaycastHit{}
+
+	physics_world.box2dWorld.RayCast(func(fixture *box2d.B2Fixture, point, normal box2d.B2Vec2, fraction float64) float64 {
+		hit.HasHit = true
+		hit.HitPosition = Vector2fFromBoxVec(point)
+		hit.HitBody = fixture.GetBody().GetUserData().(*PhysicsBody)
+		hit.Normal = Vector2fFromBoxVec(normal)
+
+		return fraction
+	}, BoxVector2f(origin), BoxVector2f(origin.Add(direction.Scale(distance))))
+
+	return hit
 }

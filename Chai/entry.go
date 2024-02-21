@@ -1,6 +1,7 @@
 package chai
 
 import (
+	"strings"
 	"syscall/js"
 )
 
@@ -56,6 +57,9 @@ var physics_world PhysicsWorld
 var MouseCanvasPos Vector2f
 var canvasBoundingClientRect js.Value
 
+var mousePressed MouseButton
+var LeftMouseJustPressed ChaiEvent[int]
+
 func GetPhysicsWorld() *PhysicsWorld {
 	return &physics_world
 }
@@ -93,6 +97,10 @@ func Run(_app *App) {
 	appRef = _app
 	_app.fillDefaults()
 	app_url = js.Global().Get("location").Get("href").String()
+	if strings.Contains(app_url, "index.html") {
+		app_url = strings.ReplaceAll(app_url, "index.html", "")
+	}
+	LogF("%v", app_url)
 
 	js.Global().Get("document").Set("title", _app.Title)
 
@@ -105,15 +113,16 @@ func Run(_app *App) {
 	canvas.Set("width", _app.Width)
 	canvas.Set("height", _app.Height)
 
-	canvasContext.Call("blendFuncSeparate", canvasContext.Get("SRC_ALPHA"), canvasContext.Get("ONE_MINUS_SRC_ALPHA"), canvasContext.Get("ONE"), canvasContext.Get("ONE"))
+	canvasContext.Call("blendFunc", canvasContext.Get("ONE"), canvasContext.Get("ONE_MINUS_SRC_ALPHA"), canvasContext.Get("ONE"), canvasContext.Get("ONE"))
 	canvasContext.Call("enable", canvasContext.Get("BLEND"))
 
 	tempStart = _app.OnStart
 	tempUpdate = _app.OnUpdate
 	tempDraw = _app.OnDraw
 
+	initTextures()
 	InitInputs()
-	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.1))
+	physics_world = newPhysicsWorld(NewVector2f(0.0, -40))
 	physics_world.box2dWorld.SetContactListener(worldContactListener)
 
 	//js.Global().Set("js_start", js.FuncOf(JSStart))
@@ -137,6 +146,9 @@ func Run(_app *App) {
 	Sprites.Init("")
 	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 
+	mousePressed = MouseButtonNull
+	LeftMouseJustPressed.init()
+
 	addEventListenerWindow(JS_KEYUP, func(ae *AppEvent) {
 		_app.OnEvent(ae)
 	})
@@ -144,9 +156,15 @@ func Run(_app *App) {
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_MOUSEDOWN, func(ae *AppEvent) {
+		mousePressed = ae.Button
+		switch mousePressed {
+		case LEFT_MOUSE_BUTTON:
+			LeftMouseJustPressed.Invoke(0)
+		}
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_MOUSEUP, func(ae *AppEvent) {
+		mousePressed = MouseButtonNull
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_MOUSEMOVED, func(ae *AppEvent) {
@@ -217,7 +235,7 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 		return nil
 	}
 	canvasContext.Call("viewport", 0, 0, currentWidth, currentHeight)
-	canvasContext.Call("clearColor", 0.1, 0.0, 0.2, 1.0)
+	setBackgroundColor(current_scene.Background)
 	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
 
 	//Shapes.DrawLine(NewVector2f(0.0, 0.0), NewVector2f(2.5, 0.5), RGBA8{255, 255, 0, 255})
@@ -226,4 +244,9 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	Sprites.Render(&Cam)
 	Shapes.Render(&Cam)
 	return nil
+}
+
+func setBackgroundColor(_color RGBA8) {
+	canvasContext.Call("clearColor", _color.GetColorRFloat32(), _color.GetColorGFloat32(), _color.GetColorBFloat32(), 1.0)
+
 }

@@ -107,6 +107,10 @@ func IsJustReleased(_input_name string) bool {
 	return !curr_ok && prev_ok
 }
 
+func IsMousePressed(mouseButton MouseButton) bool {
+	return mousePressed == mouseButton
+}
+
 func GetMousePosition(evt js.Value) Vector2f {
 	rect := canvas.Call("getBoundingClientRect")
 	return NewVector2f((float32(evt.Get("clientX").Int())-float32(rect.Get("left").Int()))/float32(rect.Get("width").Int())*float32(canvas.Get("width").Int()),

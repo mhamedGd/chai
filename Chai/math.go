@@ -66,7 +66,17 @@ func LerpUint8(_a, _b uint8, _t float32) uint8 {
 }
 
 func Float1ToUint8_255(_inp float32) uint8 {
-	return uint8(_inp * 255.0)
+	output := (_inp * 255.0)
+	if output >= 255 {
+		output = 255
+	} else if output <= 0.0 {
+		output = 0
+	}
+	return uint8(output)
+}
+
+func Uint8ToFloat1(_inp uint8) float32 {
+	return float32(_inp) / 255.0
 }
 
 /*

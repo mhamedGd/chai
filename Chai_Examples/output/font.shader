@@ -39,10 +39,12 @@ out vec4 fragColor;
 
 void main(void) {
 	vec4 thisColor = texture(genericSampler, vertex_UV);
+	/*
 	if(thisColor.a > 0.0){
 		thisColor = vec4(1.0);
 	}else {
 		thisColor = vec4(0.0);
 	}
+	*/
 	fragColor = thisColor * vertex_FragColor;
 }

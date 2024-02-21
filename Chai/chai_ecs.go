@@ -147,6 +147,7 @@ func (sys *EcsSystemImpl) GetEcsEngine() *EcsEngine {
 }
 
 type Scene struct {
+	Background     RGBA8
 	Ecs_engine     EcsEngine
 	entities       []EcsEntity
 	update_systems []EcsSystem
@@ -179,6 +180,10 @@ func (scene *Scene) terminateScene() {
 	scene.entities = scene.entities[:0]
 	scene.update_systems = scene.update_systems[:0]
 	scene.render_systems = scene.render_systems[:0]
+
+	for b := GetPhysicsWorld().box2dWorld.GetBodyList(); b != nil; b = b.GetNext() {
+		GetPhysicsWorld().box2dWorld.DestroyBody(b)
+	}
 }
 
 func (scene *Scene) NewEntity(pos Vector2f, dim Vector2f, rot float32) *EcsEntity {
@@ -238,13 +243,14 @@ type SpriteRenderOriginSystem struct {
 	EcsSystemImpl
 	Sprites *SpriteBatch
 	Offset  Vector2f
+	Scale   float32
 }
 
 func (_render *SpriteRenderOriginSystem) Update(dt float32) {
 	EachEntity(SpriteComponent{}, func(entity *EcsEntity, a interface{}) {
 		sprite := a.(SpriteComponent)
 		halfDim := NewVector2f(_render.Offset.X*float32(sprite.Texture.Width)/2.0, _render.Offset.Y*float32(sprite.Texture.Height)/2.0)
-		_render.Sprites.DrawSpriteOriginRotated(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, &sprite.Texture, sprite.Tint, entity.Rot)
+		_render.Sprites.DrawSpriteOriginScaledRotated(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, _render.Scale, &sprite.Texture, sprite.Tint, entity.Rot)
 	})
 }
 
@@ -289,6 +295,7 @@ func (_render *TriangleRenderSystem) Update(dt float32) {
 
 type RectRenderComponent struct {
 	Component
+	Tint RGBA8
 }
 
 func (t *RectRenderComponent) ComponentSet(val interface{}) { *t = val.(RectRenderComponent) }
@@ -300,7 +307,27 @@ type RectRenderSystem struct {
 
 func (_render *RectRenderSystem) Update(dt float32) {
 	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		_render.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, WHITE, entity.Rot)
+		rectComp := a.(RectRenderComponent)
+		_render.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+	})
+}
+
+type FillRectRenderComponent struct {
+	Component
+	Tint RGBA8
+}
+
+func (t *FillRectRenderComponent) ComponentSet(val interface{}) { *t = val.(FillRectRenderComponent) }
+
+type FillRectRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (_render *FillRectRenderSystem) Update(dt float32) {
+	EachEntity(FillRectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		rectComp := a.(FillRectRenderComponent)
+		_render.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
 	})
 }
 

@@ -7,6 +7,16 @@ import (
 	"syscall/js"
 )
 
+type TextureFilter = js.Value
+
+var TEXTURE_FILTER_LINEAR TextureFilter
+var TEXTURE_FILTER_NEAREST TextureFilter
+
+func initTextures() {
+	TEXTURE_FILTER_LINEAR = canvasContext.Get("LINEAR")
+	TEXTURE_FILTER_NEAREST = canvasContext.Get("NEAREST")
+}
+
 type TileSet struct {
 	texture                   Texture2D
 	totalRows, totalColumns   int
@@ -25,6 +35,10 @@ func NewTileSet(_startPosition Vector2f, _texture Texture2D, _columns, _rows int
 	}
 }
 
+type TextureSettings struct {
+	Filter TextureFilter
+}
+
 type Texture2D struct {
 	Width, Height, bpp int
 	textureId          js.Value
@@ -40,7 +54,7 @@ func New(r, g, b, a uint8) Pixel {
 	return pixel
 }
 
-func LoadPng(_filePath string) Texture2D {
+func LoadPng(_filePath string, _textureSettings *TextureSettings) Texture2D {
 
 	var tempTexture Texture2D
 
@@ -71,15 +85,15 @@ func LoadPng(_filePath string) Texture2D {
 	canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE0"))
 	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), tempTexture.textureId)
 
-	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), canvasContext.Get("NEAREST"))
-	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), canvasContext.Get("NEAREST"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), _textureSettings.Filter)
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), _textureSettings.Filter)
 
 	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_S"), canvasContext.Get("CLAMP_TO_EDGE"))
 	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_T"), canvasContext.Get("CLAMP_TO_EDGE"))
 
 	jsPixels := pixelBufferToJsPixelBubffer(pixels)
 
-	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA8"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
+	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
 
 	return tempTexture
 }

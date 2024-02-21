@@ -71,6 +71,10 @@ const JS_MOUSEMOVED JsEventType = "mousemove"
 
 // ---------------------------------------------
 
+const LEFT_MOUSE_BUTTON = 0
+const MIDLE_MOUSE_BUTTON = 1
+const RIGHT_MOUSE_BUTTON = 2
+
 const MouseButtonNull MouseButton = -1
 const KeyNull string = ""
 const CodeNull string = ""

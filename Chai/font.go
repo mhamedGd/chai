@@ -335,7 +335,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 
 	max_width, max_height := int(0), int(0)
 
-	dot := fixed.Point26_6{fixed.Int26_6(face.Metrics().Ascent), 0}
+	dot := fixed.Point26_6{X: fixed.Int26_6(face.Metrics().Ascent), Y: 0}
 	for i := 33; i < 127; i++ {
 		char := rune(i)
 
@@ -519,7 +519,7 @@ func LoadFontTexture(_fontPath string, _fontSettings *FontBatchSettings) Texture
 
 	max_width, max_height := int(0), int(0)
 
-	dot := fixed.Point26_6{fixed.Int26_6(face.Metrics().Ascent), 0}
+	dot := fixed.Point26_6{X: fixed.Int26_6(face.Metrics().Ascent), Y: 0}
 	for i := 33; i < 127; i++ {
 		char := rune(i)
 

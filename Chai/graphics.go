@@ -4,9 +4,44 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
+	"math/rand"
 	"syscall/js"
 	"unsafe"
 )
+
+const SHAPES_SHADER_VERTEX = `#version 300 es
+
+precision mediump float;
+
+in vec2 coordinates;
+in vec4 colors;
+
+out vec4 vertex_FragColor;
+
+uniform mat4 projection_matrix;
+uniform mat4 view_matrix;
+
+void main(void) {
+	vec4 global_position = vec4(0.0);
+	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
+	global_position.z = 0.0;
+	global_position.w = 1.0;		
+	gl_Position = global_position;
+	
+	vertex_FragColor = colors;
+}
+`
+const SHAPES_SHADER_FRAGMENT = `#version 300 es
+
+precision mediump float;
+
+in vec4 vertex_FragColor;
+
+out vec4 fragColor;
+void main(void) {
+    fragColor = vertex_FragColor;
+}
+`
 
 var canvasContext js.Value
 
@@ -46,8 +81,29 @@ func (rgba8 *RGBA8) SetColorAFloat32(a float32) {
 	rgba8.a = Float1ToUint8_255(a)
 }
 
+func (rgba8 *RGBA8) GetColorRFloat32() float32 {
+	return Uint8ToFloat1(rgba8.r)
+}
+func (rgba8 *RGBA8) GetColorGFloat32() float32 {
+	return Uint8ToFloat1(rgba8.g)
+}
+func (rgba8 *RGBA8) GetColorBFloat32() float32 {
+	return Uint8ToFloat1(rgba8.b)
+}
+func (rgba8 *RGBA8) GetColorAFloat32() float32 {
+	return Uint8ToFloat1(rgba8.a)
+}
+
 func NewRGBA8(r, g, b, a uint8) RGBA8 {
 	return RGBA8{r, g, b, a}
+}
+
+func NewRGBA8Float(r, g, b, a float32) RGBA8 {
+	return RGBA8{Float1ToUint8_255(r), Float1ToUint8_255(g), Float1ToUint8_255(b), Float1ToUint8_255(a)}
+}
+
+func GetRandomRGBA8() RGBA8 {
+	return NewRGBA8(Float1ToUint8_255(rand.Float32()), Float1ToUint8_255(rand.Float32()), Float1ToUint8_255(rand.Float32()), 255)
 }
 
 var WHITE = RGBA8{255, 255, 255, 255}
@@ -107,8 +163,8 @@ func (_shapesB *ShapeBatch) Init() {
 	canvasContext.Call("disableVertexAttribArray", 1)
 	canvasContext.Call("disableVertexAttribArray", 2)
 
-	//_shapesB.Shader.ParseShader(vertexShader, fragmentShader)
-	_shapesB.Shader.ParseShaderFromFile("shapes.shader")
+	_shapesB.Shader.ParseShader(SHAPES_SHADER_VERTEX, SHAPES_SHADER_FRAGMENT)
+	//_shapesB.Shader.ParseShaderFromFile("shapes.shader")
 	_shapesB.Shader.CreateShaderProgram()
 	_shapesB.Shader.AddAttribute("coordinates")
 	_shapesB.Shader.AddAttribute("colors")
@@ -313,6 +369,50 @@ func (_sp *ShapeBatch) Render(cam *Camera2D) {
 ##############################################################
 */
 
+const SPRITES_SHADER_VERTEX = `#version 300 es
+
+precision mediump float;
+
+in vec2 coordinates;
+in vec4 colors;
+in vec2 uv;
+
+out vec4 vertex_FragColor;
+out vec2 vertex_UV;
+
+uniform mat4 projection_matrix;
+uniform mat4 view_matrix;
+
+void main(void) {
+	vec4 global_position = vec4(0.0);
+	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
+	global_position.z = 0.0;
+	global_position.w = 1.0;		
+	gl_Position = global_position;
+	
+	
+	vertex_FragColor = colors;
+	vertex_UV = uv;
+}`
+const SPRITES_SHADER_FRAGMENT = `#version 300 es
+
+precision mediump float;
+
+in vec4 vertex_FragColor;
+in vec2 vertex_UV;
+
+uniform sampler2D genericSampler;
+
+out vec4 fragColor;
+
+void main(void) {
+	vec4 thisColor = vertex_FragColor * texture(genericSampler, vertex_UV);
+	thisColor.r *= vertex_FragColor.a;
+	thisColor.g *= vertex_FragColor.a;
+	thisColor.b *= vertex_FragColor.a;
+	fragColor = thisColor;
+}`
+
 type SpriteGlyph struct {
 	bottomleft, topleft, topright, bottomright Vertex
 	texture                                    *Texture2D
@@ -400,7 +500,7 @@ func (self *SpriteBatch) Init(_shader_path string) {
 	canvasContext.Call("disableVertexAttribArray", 2)
 
 	if _shader_path == "" {
-		self.shader.ParseShaderFromFile("sprites.shader")
+		self.shader.ParseShader(SPRITES_SHADER_VERTEX, SPRITES_SHADER_FRAGMENT)
 	} else {
 		self.shader.ParseShaderFromFile(_shader_path)
 	}

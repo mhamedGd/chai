@@ -18,6 +18,8 @@ var move_system MoveSystem = MoveSystem{}
 
 var bgl_texture chai.Texture2D
 
+var textureSet chai.TextureSettings
+
 func main() {
 
 	var dpad_modifier chai.Vector2f = chai.Vector2fZero
@@ -29,6 +31,7 @@ func main() {
 		Width:  800,
 		Height: 600,
 		Title:  "Test",
+
 		OnStart: func() {
 
 			chai.LogF("STARTED\n")
@@ -40,11 +43,14 @@ func main() {
 			chai.BindInput("Zoom In", chai.KEY_E)
 			chai.BindInput("Zoom Out", chai.KEY_Q)
 			chai.BindInput("Change Scene", chai.KEY_L)
-			chai.BindInput("Delete Component", chai.KEY_M)
 
 			chai.Shapes.LineWidth = .5
 
-			bgl_texture = chai.LoadPng("Assets/tile_0004.png")
+			textureSet = chai.TextureSettings{
+				Filter: chai.TEXTURE_FILTER_NEAREST,
+			}
+
+			bgl_texture = chai.LoadPng("Assets/tile_0004.png", &textureSet)
 
 			chai.MainButton_Pressed.AddListener(func(i ...int) {
 				dpad_modifier.Y += 1.0
@@ -150,6 +156,12 @@ func (kb *KeyBindsSystem) Update(dt float32) {
 		keybinds.axes.X = chai.GetActionStrength("Right") - (chai.GetActionStrength("Left"))
 		keybinds.axes.Y = chai.GetActionStrength("Up") - (chai.GetActionStrength("Down"))
 		chai.WriteComponent(kb.GetEcsEngine(), entity, keybinds)
+
+		hit := chai.Raycast(entity.Pos, chai.Vector2fUp.Rotate(entity.Rot, chai.Vector2fZero), 600.0)
+		if hit.HasHit {
+			chai.Shapes.DrawLine(entity.Pos, hit.HitPosition, chai.WHITE)
+			chai.Shapes.DrawLine(hit.HitPosition, hit.HitPosition.Add(hit.Normal.Scale(8.0)), chai.WHITE)
+		}
 	})
 }
 
@@ -238,11 +250,13 @@ var cat_sprites_anim_system chai.SpriteAnimationSystem = chai.SpriteAnimationSys
 var dynamic_body_update_system chai.DynamicBodyUpdateSystem = chai.DynamicBodyUpdateSystem{}
 
 func StartSceneOne() {
+	scene_one.Background = chai.NewRGBA8Float(0.05, 0.1, 0.1, 1.0)
 	scene_one.NewRenderSystem(&triangle_render_system)
 	scene_one.NewRenderSystem(&rect_render_system)
 	scene_one.NewRenderSystem(&circle_render_system)
 	scene_one.NewRenderSystem(&cat_sprites_anim_system)
 	scene_one.NewRenderSystem(&sprite_render_system)
+	sprite_render_system.Scale = 1.0
 
 	scene_one.NewUpdateSystem(&dynamic_body_update_system)
 	scene_one.NewUpdateSystem(&keybinds_system)
@@ -257,7 +271,14 @@ func StartSceneOne() {
 	//scene_one.WriteComponentToLastEntity(catAnim)
 
 	//scene_one.WriteComponentToLastEntity(chai.SpriteAnimation{CurrentAnimation: "Cat"})
-
+	dynamicBodySettings := chai.DynamicBodySettings{
+		BodySize:     chai.Vector2fOne,
+		BodyShape:    chai.Shape_RectBody,
+		Mass:         10.0,
+		Friction:     0.4,
+		Restitution:  0.25,
+		GravityScale: 1.0,
+	}
 	for i := 0; i < 10; i++ {
 		catAnim := chai.NewAnimationComponentVector2i()
 		catAnim.NewTweenAnimationVector2i("Cat")
@@ -266,7 +287,8 @@ func StartSceneOne() {
 		catAnim.RegisterKeyframe("Cat", 1.0, chai.Vector2i{X: 2, Y: 0})
 		catAnim.RegisterKeyframe("Cat", 1.5, chai.Vector2i{X: 3, Y: 0})
 		ent := scene_one.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), chai.Vector2fOne.Scale(12.0).AddXY(0.0, 4.0), 0.0)
-		scene_one.WriteComponentToLastEntity(chai.NewDynamicBody(ent, chai.Shape_RectCollider, ent.Dimensions, 2.0, 0.20, 1.0, chai.GetPhysicsWorld()))
+		dynamicBodySettings.BodySize = ent.Dimensions
+		scene_one.WriteComponentToLastEntity(chai.NewDynamicBody(ent, dynamicBodySettings))
 		if i%2 == 0 {
 			catAnim.Play("Cat")
 		}
@@ -278,7 +300,16 @@ func StartSceneOne() {
 	ent := scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne.Scale(6.0).AddXY(0.0, 12.0), 0.0)
 	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
 
-	player_dynmaic := chai.NewDynamicBody(ent, chai.Shape_CircleCollider, ent.Dimensions, 12.0, 10.0, 0.0, chai.GetPhysicsWorld())
+	dynamicBodySettings = chai.DynamicBodySettings{
+		BodySize:     ent.Dimensions,
+		BodyShape:    chai.Shape_CircleBody,
+		Mass:         15.0,
+		Friction:     0.4,
+		Restitution:  0.0,
+		GravityScale: 0.0,
+	}
+
+	player_dynmaic := chai.NewDynamicBody(ent, dynamicBodySettings)
 	player_dynmaic.GetPhyiscsBody().OnCollisionStart.AddListener(func(c ...*chai.Collision) {
 		col := c[0]
 		if col.SecondBody.IsTrigger {
@@ -295,12 +326,12 @@ func StartSceneOne() {
 	scene_one.NewEntity(chai.NewVector2f(0.0, 25.0), chai.Vector2fOne, 0.0)
 	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
 	animation := chai.NewAnimationComponentFloat32()
-	animation.NewTweenAnimationFloat32("Color Change")
+	animation.NewTweenAnimationFloat32("Color Change", true)
 	animation.RegisterKeyframe("Color Change", 0.0, 0.0)
 	animation.RegisterKeyframe("Color Change", 1.5, 1.0)
 	animation.RegisterKeyframe("Color Change", 3.0, 0.0)
 
-	animation.NewTweenAnimationFloat32("Move")
+	animation.NewTweenAnimationFloat32("Move", true)
 	animation.RegisterKeyframe("Move", 0.0, 0.0)
 	animation.RegisterKeyframe("Move", 1.5, 25.0)
 	animation.RegisterKeyframe("Move", 3.0, 0.0)
@@ -309,18 +340,27 @@ func StartSceneOne() {
 
 	scene_one.WriteComponentToLastEntity(animation)
 
-	catSpriteSheet := chai.LoadPng("Assets/Cat Sprite Sheet.png")
+	catSpriteSheet := chai.LoadPng("Assets/Cat Sprite Sheet.png", &textureSet)
 	tileset := chai.NewTileSet(chai.Vector2fZero, catSpriteSheet, 8, 10)
 	cat_sprites_anim_system.TileSet = tileset
 	cat_sprites_anim_system.Sprites = &chai.Sprites
 	cat_sprites_anim_system.SpriteScale = 0.125
 
 	ent = scene_one.NewEntity(chai.NewVector2f(0.0, -70.0), chai.NewVector2f(500.0, 25.0), 0.0)
-	scene_one.WriteComponentToLastEntity(chai.NewStaticBody(ent, chai.Shape_RectCollider, ent.Dimensions, 0.3, chai.GetPhysicsWorld()))
-	scene_one.WriteComponentToLastEntity(chai.RectRenderComponent{})
+	staticBodySets := chai.StaticBodySettings{
+		BodySize:  ent.Dimensions,
+		BodyShape: chai.Shape_RectBody,
+		Friction:  0.3,
+	}
+	scene_one.WriteComponentToLastEntity(chai.NewStaticBody(ent, staticBodySets))
+	scene_one.WriteComponentToLastEntity(chai.RectRenderComponent{Tint: chai.WHITE})
 
 	ent = scene_one.NewEntity(chai.NewVector2f(40.0, 150.0), chai.NewVector2f(50.0, 50.0), 45.0)
-	trigger_area := chai.NewTriggerArea(ent, chai.Shape_CircleCollider, ent.Dimensions, chai.GetPhysicsWorld())
+
+	staticBodySets.BodySize = ent.Dimensions
+	staticBodySets.BodyShape = chai.Shape_CircleBody
+
+	trigger_area := chai.NewTriggerArea(ent, staticBodySets)
 	trigger_area.GetPhyiscsBody().OnCollisionStart.AddListener(func(c ...*chai.Collision) {
 		c[0].SecondBody.Debug_Tint = chai.NewRGBA8(255, 0, 0, 255)
 	})
@@ -342,7 +382,15 @@ func StartSceneTwo() {
 
 	//Player
 	ent := scene_two.NewEntity(chai.Vector2fZero, chai.Vector2fOne.Scale(8.0), 0.0)
-	scene_two.WriteComponentToLastEntity(chai.NewDynamicBody(ent, chai.Shape_RectCollider, ent.Dimensions, 20.0, 10.0, 0.0, chai.GetPhysicsWorld()))
+	dynamicBodySettings := chai.DynamicBodySettings{
+		BodySize:     ent.Dimensions,
+		BodyShape:    chai.Shape_CircleBody,
+		Mass:         3.0,
+		Friction:     0.4,
+		Restitution:  0.0,
+		GravityScale: 0.0,
+	}
+	scene_two.WriteComponentToLastEntity(chai.NewDynamicBody(ent, dynamicBodySettings))
 	scene_two.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
 
 	scene_two.WriteComponentToLastEntity(KeyBinds{})

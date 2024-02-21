@@ -62,10 +62,15 @@ type TweenAnimation[T any] struct {
 	CurrentTimestep float32
 	timeStepFactor  float32
 	Loop            bool
+	HasFinished     bool
 }
 
 func (comp *AnimationComponent[T]) GetCurrentValue(animationName string) T {
 	return comp.Animations[animationName].currentValue
+}
+
+func (comp *AnimationComponent[T]) HasFinished(animationName string) bool {
+	return comp.Animations[animationName].HasFinished
 }
 
 func (comp TweenAnimation[T]) IsPlaying() bool {
@@ -83,10 +88,11 @@ func (anim *AnimationComponent[int]) NewTweenAnimationInt(animationName string) 
 	}
 }
 
-func (anim *AnimationComponent[float32]) NewTweenAnimationFloat32(animationName string) {
+func (anim *AnimationComponent[float32]) NewTweenAnimationFloat32(animationName string, loop bool) {
 	anim.Animations[animationName] = &TweenAnimation[float32]{
 		KeyframeValues: make([]TweenValue[float32], 0),
 		timeStepFactor: 0.0,
+		Loop:           loop,
 	}
 }
 
@@ -127,7 +133,7 @@ func (ks *TweenAnimatorSystemFloat32) Update(dt float32) {
 	EachEntity(AnimationComponent[float32]{}, func(entity *EcsEntity, a interface{}) {
 		anims := a.(AnimationComponent[float32])
 		for _, tween := range anims.Animations {
-			if !tween.IsPlaying() {
+			if !tween.IsPlaying() || tween.HasFinished {
 				continue
 			}
 			tween.CurrentTimestep += dt * tween.timeStepFactor
@@ -136,7 +142,11 @@ func (ks *TweenAnimatorSystemFloat32) Update(dt float32) {
 				tween.currentIndex++
 				if tween.currentIndex == len(tween.KeyframeValues)-1 {
 					tween.currentIndex = 0
-					tween.CurrentTimestep = tween.KeyframeValues[0].timeStep
+					if tween.Loop {
+						tween.CurrentTimestep = tween.KeyframeValues[0].timeStep
+					} else {
+						tween.HasFinished = true
+					}
 				}
 			}
 		}
