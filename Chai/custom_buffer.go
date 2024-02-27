@@ -31,6 +31,18 @@ func vertexBufferToJsVertexBuffer(_buffer []Vertex) js.Value {
 	return jsVerts
 }
 
+func float32BufferToJsFloat32Buffer(_buffer []float32) js.Value {
+	jsElements := js.Global().Get("Uint8Array").New(len(_buffer) * 4)
+	var elementsBytes []byte
+	headerElem := (*reflect.SliceHeader)(unsafe.Pointer(&elementsBytes))
+	headerElem.Cap = cap(_buffer) * 4
+	headerElem.Len = len(_buffer) * 4
+	headerElem.Data = uintptr(unsafe.Pointer(&_buffer[0]))
+
+	js.CopyBytesToJS(jsElements, elementsBytes)
+	return jsElements
+}
+
 func int32BufferToJsInt32Buffer(_buffer []int32) js.Value {
 	jsElements := js.Global().Get("Uint8Array").New(len(_buffer) * 4)
 	var elementsBytes []byte

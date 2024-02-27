@@ -43,6 +43,7 @@ func main() {
 			chai.BindInput("Zoom In", chai.KEY_E)
 			chai.BindInput("Zoom Out", chai.KEY_Q)
 			chai.BindInput("Change Scene", chai.KEY_L)
+			chai.BindInput("Hit", chai.KEY_SPCAE)
 
 			chai.Shapes.LineWidth = .5
 
@@ -130,9 +131,6 @@ func main() {
 			englishFontAtlas.Render()
 		},
 		OnEvent: func(ae *chai.AppEvent) {
-			if ae.Type == chai.JS_MOUSEMOVED {
-
-			}
 		},
 	}
 
@@ -161,7 +159,15 @@ func (kb *KeyBindsSystem) Update(dt float32) {
 		if hit.HasHit {
 			chai.Shapes.DrawLine(entity.Pos, hit.HitPosition, chai.WHITE)
 			chai.Shapes.DrawLine(hit.HitPosition, hit.HitPosition.Add(hit.Normal.Scale(8.0)), chai.WHITE)
+			if chai.IsJustPressed("Hit") {
+				audio := chai.AudioSourceComponent{}
+				chai.ReadComponent(kb.GetEcsEngine(), entity, &audio)
+				audio.Play("Slash")
+				audio.SetVolume("Slash", 0.0)
+				chai.WriteComponent(kb.GetEcsEngine(), entity, audio)
+			}
 		}
+
 	})
 }
 
@@ -296,9 +302,16 @@ func StartSceneOne() {
 		scene_one.WriteComponentToLastEntity(chai.SpriteAnimation{CurrentAnimation: "Cat"})
 	}
 
+	audioStream := chai.LoadAudioFile("Assets/web_sfx.ogg")
+
 	//Player
 	ent := scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne.Scale(6.0).AddXY(0.0, 12.0), 0.0)
 	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
+
+	audioSComp := chai.NewAudioSourceComponent()
+	audioSComp.AddAudioSource("Slash", audioStream)
+
+	scene_one.WriteComponentToLastEntity(audioSComp)
 
 	dynamicBodySettings = chai.DynamicBodySettings{
 		BodySize:     ent.Dimensions,
@@ -370,6 +383,12 @@ func StartSceneOne() {
 	scene_one.WriteComponentToLastEntity(trigger_area)
 	scene_one.WriteComponentToLastEntity(chai.CircleRenderComponent{})
 
+	scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne, 0.0)
+	hmoodSoundComp := chai.NewAudioSourceComponent()
+	hmoodSoundComp.AddAudioSource("Hmood", chai.LoadAudioFile("Assets/Hmood.mp3"))
+	hmoodSoundComp.Play("Hmood")
+	hmoodSoundComp.SetVolume("Hmood", 0.1)
+	scene_one.WriteComponentToLastEntity(hmoodSoundComp)
 }
 
 func StartSceneTwo() {

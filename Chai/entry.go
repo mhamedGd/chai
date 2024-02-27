@@ -120,6 +120,8 @@ func Run(_app *App) {
 	tempUpdate = _app.OnUpdate
 	tempDraw = _app.OnDraw
 
+	audioContext = js.Global().Get("AudioContext").New()
+
 	initTextures()
 	InitInputs()
 	physics_world = newPhysicsWorld(NewVector2f(0.0, -40))

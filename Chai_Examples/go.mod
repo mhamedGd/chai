@@ -8,8 +8,10 @@ require github.com/mhamedGd/chai v0.0.0
 
 require (
 	github.com/ByteArena/box2d v1.0.2 // indirect
+	github.com/jfreymuth/oggvorbis v1.0.5 // indirect
+	github.com/jfreymuth/vorbis v1.0.2 // indirect
 	github.com/udhos/goglmath v1.0.0 // indirect
-	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 
 )
