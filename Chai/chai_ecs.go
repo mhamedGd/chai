@@ -252,6 +252,35 @@ func (_render *SpriteRenderOriginSystem) Update(dt float32) {
 		halfDim := NewVector2f(_render.Offset.X*float32(sprite.Texture.Width)/2.0, _render.Offset.Y*float32(sprite.Texture.Height)/2.0)
 		_render.Sprites.DrawSpriteOriginScaledRotated(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, _render.Scale, &sprite.Texture, sprite.Tint, entity.Rot)
 	})
+
+}
+
+type ShapesDrawingSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+func (sds *ShapesDrawingSystem) Update(dt float32) {
+	EachEntity(LineRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		lineComp := a.(LineRenderComponent)
+		sds.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
+	})
+	EachEntity(TriangleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		lineComp := a.(TriangleRenderComponent)
+		sds.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, float32(entity.Rot))
+	})
+	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		rectComp := a.(RectRenderComponent)
+		sds.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+	})
+	EachEntity(FillRectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		rectComp := a.(FillRectRenderComponent)
+		sds.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+	})
+	EachEntity(CircleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		circle := a.(CircleRenderComponent)
+		sds.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, circle.Tint)
+	})
 }
 
 type LineRenderComponent struct {
@@ -262,36 +291,12 @@ type LineRenderComponent struct {
 
 func (t *LineRenderComponent) ComponentSet(val interface{}) { *t = val.(LineRenderComponent) }
 
-type LineRenderSystem struct {
-	EcsSystemImpl
-	Shapes *ShapeBatch
-}
-
-func (_render *LineRenderSystem) Update(dt float32) {
-	EachEntity(LineRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		lineComp := a.(LineRenderComponent)
-		_render.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
-	})
-}
-
 type TriangleRenderComponent struct {
 	Component
 	Dimensions Vector2f
 }
 
 func (t *TriangleRenderComponent) ComponentSet(val interface{}) { *t = val.(TriangleRenderComponent) }
-
-type TriangleRenderSystem struct {
-	EcsSystemImpl
-	Shapes *ShapeBatch
-}
-
-func (_render *TriangleRenderSystem) Update(dt float32) {
-	EachEntity(TriangleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		lineComp := a.(TriangleRenderComponent)
-		_render.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, float32(entity.Rot))
-	})
-}
 
 type RectRenderComponent struct {
 	Component
@@ -300,18 +305,6 @@ type RectRenderComponent struct {
 
 func (t *RectRenderComponent) ComponentSet(val interface{}) { *t = val.(RectRenderComponent) }
 
-type RectRenderSystem struct {
-	EcsSystemImpl
-	Shapes *ShapeBatch
-}
-
-func (_render *RectRenderSystem) Update(dt float32) {
-	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(RectRenderComponent)
-		_render.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
-	})
-}
-
 type FillRectRenderComponent struct {
 	Component
 	Tint RGBA8
@@ -319,31 +312,96 @@ type FillRectRenderComponent struct {
 
 func (t *FillRectRenderComponent) ComponentSet(val interface{}) { *t = val.(FillRectRenderComponent) }
 
-type FillRectRenderSystem struct {
-	EcsSystemImpl
-	Shapes *ShapeBatch
-}
-
-func (_render *FillRectRenderSystem) Update(dt float32) {
-	EachEntity(FillRectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(FillRectRenderComponent)
-		_render.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
-	})
-}
-
 type CircleRenderComponent struct {
 	Component
+	Tint RGBA8
 }
 
 func (t *CircleRenderComponent) ComponentSet(val interface{}) { *t = val.(CircleRenderComponent) }
 
-type CircleRenderSystem struct {
+/*
+###################################################################
+################# UI UI UI UI UI UI UI UI UI UI UI ################
+###################################################################
+*/
+
+type UIShapesDrawingSystem struct {
 	EcsSystemImpl
 	Shapes *ShapeBatch
 }
 
-func (_render *CircleRenderSystem) Update(dt float32) {
-	EachEntity(CircleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		_render.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, WHITE)
+func (sds *UIShapesDrawingSystem) Update(dt float32) {
+	EachEntity(LineUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		lineComp := a.(LineUIRenderComponent)
+		sds.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
+	})
+	EachEntity(TriangleUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		triComp := a.(TriangleUIRenderComponent)
+		sds.Shapes.DrawTriangleRotated(entity.Pos, triComp.Dimensions, triComp.Tint, float32(entity.Rot))
+	})
+	EachEntity(RectUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		rectComp := a.(RectUIRenderComponent)
+		sds.Shapes.DrawRectRotated(entity.Pos, rectComp.Dimensions, rectComp.Tint, entity.Rot)
+	})
+	EachEntity(FillRectUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		rectComp := a.(FillRectUIRenderComponent)
+		sds.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+	})
+	EachEntity(CircleUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
+		circle := a.(CircleUIRenderComponent)
+		sds.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, circle.Tint)
 	})
 }
+
+type LineUIRenderComponent struct {
+	Component
+	FromPoint Vector2f
+	ToPoint   Vector2f
+}
+
+func (t *LineUIRenderComponent) ComponentSet(val interface{}) { *t = val.(LineUIRenderComponent) }
+
+type TriangleUIRenderComponent struct {
+	Component
+	Dimensions Vector2f
+	Tint       RGBA8
+}
+
+func (t *TriangleUIRenderComponent) ComponentSet(val interface{}) {
+	*t = val.(TriangleUIRenderComponent)
+}
+
+type RectUIRenderComponent struct {
+	Component
+	Dimensions Vector2f
+	Tint       RGBA8
+}
+
+func (t *RectUIRenderComponent) ComponentSet(val interface{}) { *t = val.(RectUIRenderComponent) }
+
+type FillRectUIRenderComponent struct {
+	Component
+	Dimensions Vector2f
+	Tint       RGBA8
+}
+
+func (t *FillRectUIRenderComponent) ComponentSet(val interface{}) {
+	*t = val.(FillRectUIRenderComponent)
+}
+
+type CircleUIRenderComponent struct {
+	Component
+	Tint RGBA8
+}
+
+func (t *CircleUIRenderComponent) ComponentSet(val interface{}) { *t = val.(CircleUIRenderComponent) }
+
+type CircleUIRenderSystem struct {
+	EcsSystemImpl
+	Shapes *ShapeBatch
+}
+
+/*
+###################################################################
+###################################################################
+*/

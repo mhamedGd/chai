@@ -50,6 +50,10 @@ var Cam Camera2D
 var Shapes ShapeBatch
 var Sprites SpriteBatch
 
+var uiCam Camera2D
+var UIShapes ShapeBatch
+var UISprites SpriteBatch
+
 var started bool = false
 
 var physics_world PhysicsWorld
@@ -58,6 +62,7 @@ var MouseCanvasPos Vector2f
 var canvasBoundingClientRect js.Value
 
 var mousePressed MouseButton
+var numOfFingersTouching uint8
 var LeftMouseJustPressed ChaiEvent[int]
 
 func GetPhysicsWorld() *PhysicsWorld {
@@ -140,12 +145,21 @@ func Run(_app *App) {
 
 	// if I put it above the "js_start" then it would take a lot of time to run
 	Cam.Init(*_app)
+	Cam.centerOffset = NewVector2f(float32(_app.Width)/2.0, float32(appRef.Height)/2.0)
 	Cam.Update(*_app)
+
+	uiCam.Init(*_app)
+	uiCam.position.AddXY(-float32(appRef.Width)/2.0, -float32(appRef.Height)/2.0)
+	uiCam.Update(*_app)
 
 	Shapes.Init()
 	Assert(Shapes.Initialized, "Shapes Rendering was not initialized successfully")
+	UIShapes.Init()
+	Assert(UIShapes.Initialized, "Shapes Rendering was not initialized successfully")
 
 	Sprites.Init("")
+	UISprites.Init("")
+
 	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 
 	mousePressed = MouseButtonNull
@@ -159,6 +173,7 @@ func Run(_app *App) {
 	})
 	addEventListenerWindow(JS_MOUSEDOWN, func(ae *AppEvent) {
 		mousePressed = ae.Button
+		onMousePressed()
 		switch mousePressed {
 		case LEFT_MOUSE_BUTTON:
 			LeftMouseJustPressed.Invoke(0)
@@ -167,6 +182,7 @@ func Run(_app *App) {
 	})
 	addEventListenerWindow(JS_MOUSEUP, func(ae *AppEvent) {
 		mousePressed = MouseButtonNull
+		onMouseReleased()
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_MOUSEMOVED, func(ae *AppEvent) {
@@ -174,6 +190,32 @@ func Run(_app *App) {
 
 		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
 		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
+		_app.OnEvent(ae)
+	})
+
+	addEventListenerWindow(JS_TOUCHSTART, func(ae *AppEvent) {
+		numOfFingersTouching = ae.NUM_FINGERS
+		onTouchStart(ae.NUM_FINGERS)
+
+		canvasBoundingClientRect = canvas.Call("getBoundingClientRect")
+
+		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
+		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
+
+		_app.OnEvent(ae)
+	})
+	addEventListenerWindow(JS_TOUCHEND, func(ae *AppEvent) {
+		numOfFingersTouching = ae.NUM_FINGERS
+		onTouchEnd(ae.NUM_FINGERS)
+
+		_app.OnEvent(ae)
+	})
+
+	addEventListenerWindow(JS_TOUCHMOVED, func(ae *AppEvent) {
+		canvasBoundingClientRect = canvas.Call("getBoundingClientRect")
+
+		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
+		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
 		_app.OnEvent(ae)
 	})
 
@@ -227,6 +269,7 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
+	uiCam.Update(*appRef)
 	ElapsedTime += deltaTime
 	physics_world.box2dWorld.Step(float64(deltaTime), 6, 12)
 	return nil
@@ -245,6 +288,8 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	current_scene.OnDraw()
 	Sprites.Render(&Cam)
 	Shapes.Render(&Cam)
+	UISprites.Render(&uiCam)
+	UIShapes.Render(&uiCam)
 	return nil
 }
 

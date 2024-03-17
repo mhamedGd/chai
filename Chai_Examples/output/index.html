@@ -11,8 +11,9 @@
         <div class="debug-console">
         </div>
     </div>
-    <div id="canvas-container">
+    <div id="canvas-container">   
         <canvas id="viewport" tabindex="1"></canvas>
+        <button class="play-button">Play</button>
     </div>
     <div class="mobile-controller">
         <div class="controller-set">
@@ -45,7 +46,10 @@
         var main_button = document.getElementById("main-button")
         var side_button = document.getElementById("side-button")
         
-        WebAssembly.instantiateStreaming(fetch('app.wasm'), 
+
+        document.querySelector(".play-button").addEventListener('click', () => {
+            document.querySelector(".play-button").remove()
+            WebAssembly.instantiateStreaming(fetch('app.wasm'), 
         go.importObject).then((result) => {
             go.run(result.instance);
             
@@ -119,6 +123,8 @@
             js_draw();
             requestAnimationFrame(step);
         }
+        })
+
     </script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"math/rand"
+
 	chai "github.com/mhamedGd/chai"
 )
 
@@ -9,9 +11,11 @@ var scene_one chai.Scene
 
 var scene_two chai.Scene
 var sprite_render_system chai.SpriteRenderOriginSystem = chai.SpriteRenderOriginSystem{Offset: chai.Vector2fZero}
-var triangle_render_system chai.TriangleRenderSystem = chai.TriangleRenderSystem{}
-var rect_render_system chai.RectRenderSystem = chai.RectRenderSystem{}
-var circle_render_system chai.CircleRenderSystem = chai.CircleRenderSystem{}
+var shapes_drawing_system chai.ShapesDrawingSystem = chai.ShapesDrawingSystem{}
+var ui_shapes_drawing_system chai.UIShapesDrawingSystem = chai.UIShapesDrawingSystem{}
+
+var particle_update_system chai.ParticlesShapeUpdateSystem
+var particle_render_system chai.ParticlesShapeRenderSystem
 
 var keybinds_system KeyBindsSystem = KeyBindsSystem{}
 var move_system MoveSystem = MoveSystem{}
@@ -28,8 +32,8 @@ func main() {
 	var englishFontAtlas chai.FontBatchAtlas
 
 	game = chai.App{
-		Width:  800,
-		Height: 600,
+		Width:  1920,
+		Height: 1080,
 		Title:  "Test",
 
 		OnStart: func() {
@@ -93,9 +97,8 @@ func main() {
 			englishFontAtlas = chai.LoadFontToAtlas("Assets/m5x7.ttf", &english_font_settings)
 
 			sprite_render_system.Sprites = &chai.Sprites
-			triangle_render_system.Shapes = &chai.Shapes
-			rect_render_system.Shapes = &chai.Shapes
-			circle_render_system.Shapes = &chai.Shapes
+			shapes_drawing_system.Shapes = &chai.Shapes
+			ui_shapes_drawing_system.Shapes = &chai.UIShapes
 
 			scene_one = chai.NewScene()
 			scene_two = chai.NewScene()
@@ -122,8 +125,8 @@ func main() {
 
 			//chai.Shapes.DrawTriangleRotated(midPoint, chai.NewVector2f(2.0, 4.0), chai.NewRGBA8(255, 0, 0, 255), rotation)
 			//chai.Sprites.DrawSpriteOrigin(chai.NewVector2f(2, 0.0), chai.Vector2fZero, chai.Vector2fOne, &bgl_texture, chai.NewRGBA8(255, 255, 255, 255))
-			fontAtlas.DrawString("ابدأ اللعب ٢/٤", chai.Vector2fOne.AddXY(-150.0, 0.0), 0.5, chai.WHITE)
-			englishFontAtlas.DrawString("Baghdad Game Lab\nBaghdad Game Lab", chai.Vector2fOne.AddXY(0.0, 35.0), 0.5, chai.WHITE)
+			fontAtlas.DrawString("ابدأ اللعب ٢/٤", chai.Vector2fOne.AddXY(-150.0, 0.0), 0.5, chai.NewRGBA8Float(1, 1, 0.0, 0.1))
+			englishFontAtlas.DrawString("Baghdad Game Lab\nBaghdad Game Lab", chai.Vector2fOne.AddXY(0.0, 35.0), 0.5, chai.NewRGBA8(255, 255, 255, 100))
 
 			// sprite_render_system.Update(0.0)
 
@@ -152,19 +155,25 @@ func (kb *KeyBindsSystem) Update(dt float32) {
 	chai.EachEntity(KeyBinds{}, func(entity *chai.EcsEntity, a interface{}) {
 		keybinds := a.(KeyBinds)
 		keybinds.axes.X = chai.GetActionStrength("Right") - (chai.GetActionStrength("Left"))
-		keybinds.axes.Y = chai.GetActionStrength("Up") - (chai.GetActionStrength("Down"))
+		keybinds.axes.Y = chai.GetActionStrength("Up") - (chai.GetActionStrength("Down")) + float32(chai.GetNumberOfFingersTouching())
 		chai.WriteComponent(kb.GetEcsEngine(), entity, keybinds)
 
 		hit := chai.Raycast(entity.Pos, chai.Vector2fUp.Rotate(entity.Rot, chai.Vector2fZero), 600.0)
 		if hit.HasHit {
 			chai.Shapes.DrawLine(entity.Pos, hit.HitPosition, chai.WHITE)
 			chai.Shapes.DrawLine(hit.HitPosition, hit.HitPosition.Add(hit.Normal.Scale(8.0)), chai.WHITE)
-			if chai.IsJustPressed("Hit") {
+			if chai.IsJustPressed("Hit") || chai.IsJustTouched(2) {
 				audio := chai.AudioSourceComponent{}
 				chai.ReadComponent(kb.GetEcsEngine(), entity, &audio)
-				audio.Play("Slash")
-				audio.SetVolume("Slash", 0.0)
+				audio.Play("Slash", true)
+				audio.SetVolume("Slash", 0.1)
 				chai.WriteComponent(kb.GetEcsEngine(), entity, audio)
+				direction := hit.HitPosition.Subtract(entity.Pos).Normalize()
+				hit.HitBody.ApplyForceToBody(direction.Scale(8000000.0))
+
+				particleComp := chai.ParticlesShapeComponent{}
+				chai.ReadComponent(kb.GetEcsEngine(), entity, &particleComp)
+				particleComp.AddParticles(8, chai.GFX_SHAPE_CIRCLE, chai.PARTICLES_CIRCLESPREAD, 0.75, 4.5, hit.HitPosition, chai.WHITE, 4.5, entity.Rot)
 			}
 		}
 
@@ -193,16 +202,25 @@ func (ms *MoveSystem) Update(dt float32) {
 		bindings := KeyBinds{}
 		chai.ReadComponent(ms.GetEcsEngine(), entity, &bindings)
 
-		dynamic.SetAngularVelocity(dt * 250.0 * -bindings.axes.X)
+		direction := chai.Vector2fLeft.Rotate(entity.Rot, chai.Vector2fZero)
+		mouseDirection := chai.GetMouseWorldPosition().Subtract(entity.Pos).Normalize()
 
-		direction := chai.Vector2fUp.Rotate(entity.Rot, chai.Vector2fZero)
-		force := chai.NewVector2f(bindings.axes.Y*direction.X*player_speed, bindings.axes.Y*direction.Y*player_speed)
+		dynamic.SetAngularVelocity(dt * 250.0 * chai.DotProduct(direction, mouseDirection) * (float32(chai.GetNumberOfFingersTouching()) + chai.BoolToFloat32(chai.IsMousePressed(0))))
+
+		force := chai.NewVector2f(bindings.axes.Y*(mouseDirection.X)*player_speed, bindings.axes.Y*(mouseDirection.Y)*player_speed)
 		dynamic.ApplyForce(force)
 		//dynamic.SetLinearVelocity(force.X, force.Y)
 
 		dynamic.ApplyForce(dynamic.GetLinearVelocity().Scale(-4000).Scale(1.0 - bindings.axes.Y))
 
 		chai.ScrollTo(entity.Pos)
+		linearVelocity := dynamic.GetLinearVelocity().Scale(1 / 50.0)
+		if linearVelocity.LengthSquared() > 3.0 {
+			particleComp := chai.ParticlesShapeComponent{}
+			chai.ReadComponent(ms.GetEcsEngine(), entity, &particleComp)
+			particleComp.AddParticleWithVelo(chai.GFX_SHAPE_TRIANGLE, 0.9, entity.Pos, direction.Scale(-1.0).AddXY(rand.Float32(), rand.Float32()), chai.WHITE, 4.0, rand.Float32()*180.0)
+
+		}
 
 		chai.WriteComponent(ms.GetEcsEngine(), entity, movecomp)
 	})
@@ -250,19 +268,21 @@ var tween_animator_float32_system chai.TweenAnimatorSystemFloat32 = chai.TweenAn
 var tween_animator_vector2i_system chai.TweenAnimatorSystemVector2i = chai.TweenAnimatorSystemVector2i{}
 var update_color_with_anim_system UpdateColorWithAnimSystem = UpdateColorWithAnimSystem{}
 var update_pos_with_anim_system UpdatePosWithAnimSystem = UpdatePosWithAnimSystem{}
+var uiinteraction_system chai.UIInteractionSystem = chai.UIInteractionSystem{}
 
 var cat_sprites_anim_system chai.SpriteAnimationSystem = chai.SpriteAnimationSystem{Offset: chai.NewVector2f(0.0, 12.0)}
 
 var dynamic_body_update_system chai.DynamicBodyUpdateSystem = chai.DynamicBodyUpdateSystem{}
 
 func StartSceneOne() {
-	scene_one.Background = chai.NewRGBA8Float(0.05, 0.1, 0.1, 1.0)
-	scene_one.NewRenderSystem(&triangle_render_system)
-	scene_one.NewRenderSystem(&rect_render_system)
-	scene_one.NewRenderSystem(&circle_render_system)
+	scene_one.Background = chai.NewRGBA8Float(0.05, 0.5, 0.4, 1.0)
+	scene_one.NewRenderSystem(&shapes_drawing_system)
+	scene_one.NewRenderSystem(&ui_shapes_drawing_system)
 	scene_one.NewRenderSystem(&cat_sprites_anim_system)
 	scene_one.NewRenderSystem(&sprite_render_system)
+	scene_one.NewRenderSystem(&particle_render_system)
 	sprite_render_system.Scale = 1.0
+	ui_shapes_drawing_system.Shapes.LineWidth = 2.0
 
 	scene_one.NewUpdateSystem(&dynamic_body_update_system)
 	scene_one.NewUpdateSystem(&keybinds_system)
@@ -271,6 +291,8 @@ func StartSceneOne() {
 	scene_one.NewUpdateSystem(&tween_animator_vector2i_system)
 	scene_one.NewUpdateSystem(&update_pos_with_anim_system)
 	scene_one.NewUpdateSystem(&update_color_with_anim_system)
+	scene_one.NewUpdateSystem(&particle_update_system)
+	scene_one.NewUpdateSystem(&uiinteraction_system)
 	// scene_one.NewUpdateSystem(&update_color_with_anim_system)
 
 	//scene_one.NewEntity(chai.NewVector2f(0.0, 0.0), 0.0)
@@ -294,7 +316,8 @@ func StartSceneOne() {
 		catAnim.RegisterKeyframe("Cat", 1.5, chai.Vector2i{X: 3, Y: 0})
 		ent := scene_one.NewEntity(chai.NewVector2f(40.0+(float32(i))*20.0, 0.0), chai.Vector2fOne.Scale(12.0).AddXY(0.0, 4.0), 0.0)
 		dynamicBodySettings.BodySize = ent.Dimensions
-		scene_one.WriteComponentToLastEntity(chai.NewDynamicBody(ent, dynamicBodySettings))
+		d := chai.NewDynamicBody(ent, dynamicBodySettings)
+		scene_one.WriteComponentToLastEntity(d)
 		if i%2 == 0 {
 			catAnim.Play("Cat")
 		}
@@ -335,6 +358,11 @@ func StartSceneOne() {
 
 	scene_one.WriteComponentToLastEntity(KeyBinds{})
 	scene_one.WriteComponentToLastEntity(MoveComponent{})
+	scene_one.WriteComponentToLastEntity(chai.NewParticlesShapeComponent(1000, func(dt float32, p *chai.Particle) {
+		p.Color.SetColorAFloat32(p.LifePercentage)
+		p.Rotation += dt * 2.0
+		p.Size = chai.LerpFloat32(p.Size, 0.0, 1.0-p.LifePercentage)
+	}))
 
 	scene_one.NewEntity(chai.NewVector2f(0.0, 25.0), chai.Vector2fOne, 0.0)
 	scene_one.WriteComponentToLastEntity(chai.SpriteComponent{Texture: bgl_texture, Tint: chai.WHITE})
@@ -381,19 +409,55 @@ func StartSceneOne() {
 		c[0].SecondBody.Debug_Tint = chai.WHITE
 	})
 	scene_one.WriteComponentToLastEntity(trigger_area)
-	scene_one.WriteComponentToLastEntity(chai.CircleRenderComponent{})
+	scene_one.WriteComponentToLastEntity(chai.CircleRenderComponent{Tint: chai.WHITE})
 
-	scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne, 0.0)
-	hmoodSoundComp := chai.NewAudioSourceComponent()
-	hmoodSoundComp.AddAudioSource("Hmood", chai.LoadAudioFile("Assets/Hmood.mp3"))
-	hmoodSoundComp.Play("Hmood")
-	hmoodSoundComp.SetVolume("Hmood", 0.1)
-	scene_one.WriteComponentToLastEntity(hmoodSoundComp)
+	ent = scene_one.NewEntity(chai.NewVector2f(200, 150), chai.Vector2fOne.Scale(36.0).AddXY(48.0, 0.0), 0.0)
+	scene_one.WriteComponentToLastEntity(chai.RectUIRenderComponent{Dimensions: ent.Dimensions, Tint: chai.WHITE})
+	uiInteractionComp := chai.UIInteractionsComponent{}
+	uiInteractionComp.InteractionBox = ent.Dimensions.Scale(1.0)
+	uiInteractionComp.OnCursorEnter.AddListener(func(ee ...*chai.EcsEntity) {
+		triangle := chai.RectUIRenderComponent{}
+		chai.ReadComponent(&scene_one.Ecs_engine, ee[0], &triangle)
+		chai.LogF("Triangle Tint: %v", triangle.Tint)
+
+		triangle.Tint = chai.NewRGBA8(255, 255, 0, 255)
+		chai.WriteComponent(&scene_one.Ecs_engine, ee[0], triangle)
+	})
+	uiInteractionComp.OnCursorExit.AddListener(func(ee ...*chai.EcsEntity) {
+		triangle := chai.RectUIRenderComponent{}
+		chai.ReadComponent(&scene_one.Ecs_engine, ee[0], &triangle)
+		chai.LogF("HEy Exit")
+
+		triangle.Tint = chai.NewRGBA8(255, 255, 255, 255)
+		chai.WriteComponent(&scene_one.Ecs_engine, ee[0], triangle)
+	})
+	uiInteractionComp.OnClick.AddListener(func(ee ...*chai.EcsEntity) {
+		triangle := chai.RectUIRenderComponent{}
+		chai.ReadComponent(&scene_one.Ecs_engine, ee[0], &triangle)
+
+		triangle.Tint = chai.NewRGBA8(0, 255, 255, 255)
+		chai.WriteComponent(&scene_one.Ecs_engine, ee[0], triangle)
+	})
+
+	uiInteractionComp.OnRelease.AddListener(func(ee ...*chai.EcsEntity) {
+		triangle := chai.RectUIRenderComponent{}
+		chai.ReadComponent(&scene_one.Ecs_engine, ee[0], &triangle)
+
+		triangle.Tint = chai.NewRGBA8(255, 255, 0, 255)
+		chai.WriteComponent(&scene_one.Ecs_engine, ee[0], triangle)
+	})
+	scene_one.WriteComponentToLastEntity(uiInteractionComp)
+	// scene_one.NewEntity(chai.Vector2fZero, chai.Vector2fOne, 0.0)
+	// hmoodSoundComp := chai.NewAudioSourceComponent()
+	// hmoodSoundComp.AddAudioSource("Hmood", chai.LoadAudioFile("Assets/Hmood.mp3"))
+	// hmoodSoundComp.Play("Hmood", false)
+	// hmoodSoundComp.SetVolume("Hmood", 0.3)
+	// scene_one.WriteComponentToLastEntity(hmoodSoundComp)
 }
 
 func StartSceneTwo() {
 	scene_two.NewRenderSystem(&sprite_render_system)
-	scene_two.NewRenderSystem(&triangle_render_system)
+	scene_two.NewRenderSystem(&shapes_drawing_system)
 
 	scene_two.NewUpdateSystem(&dynamic_body_update_system)
 	scene_two.NewUpdateSystem(&keybinds_system)

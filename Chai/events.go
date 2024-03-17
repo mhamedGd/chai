@@ -68,6 +68,9 @@ const JS_KEYUP JsEventType = "keyup"
 const JS_MOUSEDOWN JsEventType = "mousedown"
 const JS_MOUSEUP JsEventType = "mouseup"
 const JS_MOUSEMOVED JsEventType = "mousemove"
+const JS_TOUCHMOVED JsEventType = "touchmove"
+const JS_TOUCHSTART JsEventType = "touchstart"
+const JS_TOUCHEND JsEventType = "touchend"
 
 // ---------------------------------------------
 
@@ -94,6 +97,7 @@ type AppEvent struct {
 	// --------------------------
 	// FOR MOUSE SCROLLING
 	DeltaX, DeltaY, DeltaZ float64
+	NUM_FINGERS            uint8
 	/* --------------------------
 	AltKey   bool
 	CtrlKey  bool
@@ -143,6 +147,37 @@ func parseJSEvent(event jsEvent) *AppEvent {
 			OffsetX: 0,
 			OffsetY: 0,
 			Button:  event.Get("button").Int(),
+		}
+	case JS_TOUCHSTART:
+		return &AppEvent{
+			event:       event,
+			Type:        eventType,
+			Code:        CodeNull,
+			Key:         KeyNull,
+			OffsetX:     0,
+			OffsetY:     0,
+			Button:      MouseButtonNull,
+			NUM_FINGERS: numOfFingersTouching + 1,
+		}
+	case JS_TOUCHEND:
+		return &AppEvent{
+			event:       event,
+			Type:        eventType,
+			Code:        CodeNull,
+			Key:         KeyNull,
+			OffsetX:     0,
+			OffsetY:     0,
+			Button:      MouseButtonNull,
+			NUM_FINGERS: numOfFingersTouching - 1,
+		}
+	case JS_TOUCHMOVED:
+		return &AppEvent{
+			event:   event,
+			Type:    eventType,
+			Code:    CodeNull,
+			Key:     KeyNull,
+			OffsetX: 0,
+			OffsetY: 0,
 		}
 	}
 

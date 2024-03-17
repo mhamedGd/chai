@@ -15,6 +15,7 @@
 }
 
 body{
+    background-color: black;
     margin: 0;
     overflow: hidden;
 }
@@ -22,12 +23,37 @@ body{
     display: flex;
     width: 100vw;
     height: 80vh;
-    margin-top: 30vh;
+    margin-top: 0;
     justify-content: center;
     align-items: flex-start;
 }
 
+.play-button {
+    background: none;
+    padding: 4px 24px;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 16px;
+    z-index: 10;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.play-button-container {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+
 #viewport {
+    display: grid;
+    justify-content: center;
+    align-items: center;
     width: 90vw;
 }
 
@@ -144,7 +170,10 @@ body{
 
 @media screen and (min-width: 480px) {
     #canvas-container{
-        margin-top: 56px;
+        width: 100vw;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
     }
 
     #viewport {

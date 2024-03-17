@@ -187,6 +187,10 @@ func (dc *DynamicBodyComponent) ApplyForce(force_vector Vector2f) {
 	dc.phy_body.body.ApplyForceToCenter(BoxVector2f(force_vector), true)
 }
 
+func (pb *PhysicsBody) ApplyForceToBody(force_vector Vector2f) {
+	pb.body.ApplyForceToCenter(BoxVector2f(force_vector), true)
+}
+
 func (dc *DynamicBodyComponent) ApplyForceXY(x_force, y_force float32) {
 	dc.phy_body.body.ApplyForceToCenter(BoxVector2XY(x_force, y_force), true)
 }

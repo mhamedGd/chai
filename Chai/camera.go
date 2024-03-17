@@ -6,6 +6,7 @@ import (
 
 type Camera2D struct {
 	position      Vector2f
+	centerOffset  Vector2f
 	scale         float32
 	projectMatrix goglmath.Matrix4
 	viewMatrix    goglmath.Matrix4
@@ -29,7 +30,7 @@ func (cam *Camera2D) Update(_app App) {
 		return
 	}
 
-	cam.viewMatrix = Translate(cam.projectMatrix, -cam.position.X+float32(_app.Width)/2.0, -cam.position.Y+float32(_app.Height)/2.0, 0.0, 1.0, cam.scale)
+	cam.viewMatrix = Translate(cam.projectMatrix, -cam.position.X+cam.centerOffset.X, -cam.position.Y+cam.centerOffset.Y, 0.0, 1.0, cam.scale)
 	cam.mustUpdate = false
 }
 
@@ -101,5 +102,12 @@ func GetMouseWorldPosition() Vector2f {
 	screenPoint = screenPoint.Subtract(NewVector2f(float32(GetCanvasWidth())/2.0, float32(GetCanvasHeigth())/2.0))
 	screenPoint = screenPoint.Scale(1 / Cam.scale)
 	screenPoint = screenPoint.Add(Cam.position)
+	return screenPoint
+}
+
+func GetMouseScreenPosition() Vector2f {
+	screenPoint := MouseCanvasPos
+	screenPoint = screenPoint.Scale(1 / uiCam.scale)
+	screenPoint = screenPoint.Add(uiCam.position)
 	return screenPoint
 }

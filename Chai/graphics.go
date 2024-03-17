@@ -39,7 +39,11 @@ in vec4 vertex_FragColor;
 
 out vec4 fragColor;
 void main(void) {
-    fragColor = vertex_FragColor;
+	vec4 finalColor = vertex_FragColor;
+	finalColor.r *= vertex_FragColor.a;
+	finalColor.g *= vertex_FragColor.a;
+	finalColor.b *= vertex_FragColor.a;
+    fragColor = finalColor;
 }
 `
 
@@ -133,6 +137,14 @@ type ShapeBatch struct {
 	Initialized      bool
 }
 
+type Gfx_Shape = int
+
+const (
+	GFX_SHAPE_CIRCLE   = Gfx_Shape(0x000000f1)
+	GFX_SHAPE_RECT     = Gfx_Shape(0x000000f2)
+	GFX_SHAPE_TRIANGLE = Gfx_Shape(0x000000f3)
+)
+
 func (_shapesB *ShapeBatch) Init() {
 	_shapesB.LineWidth = 50
 
@@ -219,11 +231,11 @@ func (_sp *ShapeBatch) DrawRectRotated(_center, _dimensions Vector2f, _color RGB
 }
 
 func (_sp *ShapeBatch) DrawTriangle(_center, _dimensions Vector2f, _color RGBA8) {
-	numOfVertices := 3
+	const numOfVertices = 3
 
-	pos := [3]Vector2f{}
+	pos := [numOfVertices]Vector2f{}
 	for i := 0; i < numOfVertices; i++ {
-		angle := (float32(i) / float32(3.0)) * 2.0 * PI
+		angle := (float32(i) / float32(numOfVertices)) * 2.0 * PI
 		pos[i] = NewVector2f(_center.X+float32(math.Cos(float64(angle)))*_dimensions.Y, _center.Y+float32(math.Sin(float64(angle)))*_dimensions.X)
 	}
 

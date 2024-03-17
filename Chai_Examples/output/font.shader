@@ -38,7 +38,10 @@ uniform sampler2D genericSampler;
 out vec4 fragColor;
 
 void main(void) {
-	vec4 thisColor = texture(genericSampler, vertex_UV);
+	vec4 textureColor = vertex_FragColor * texture(genericSampler, vertex_UV);
+	textureColor.r *= vertex_FragColor.a;
+	textureColor.g *= vertex_FragColor.a;
+	textureColor.b *= vertex_FragColor.a;
 	/*
 	if(thisColor.a > 0.0){
 		thisColor = vec4(1.0);
@@ -46,5 +49,5 @@ void main(void) {
 		thisColor = vec4(0.0);
 	}
 	*/
-	fragColor = thisColor * vertex_FragColor;
+	fragColor = textureColor;
 }

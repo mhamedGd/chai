@@ -41,6 +41,8 @@ func updateInput() {
 			delete(current_frame_pressed_inputs, key)
 		}
 	}
+	isPreviousMousePressed = isCurrentMousePressed
+	previousNumberOfFingersTouching = currentNumberOfFingersTouching
 }
 
 func BindInput(_input_name string, _corr_key KeyCode) {
@@ -91,7 +93,6 @@ func GetActionStrength(_input_name string) float32 {
 	return inp.ActionStrength
 }
 func IsPressed(_input_name string) bool {
-
 	return inputs_map[_input_name].IsPressed
 }
 
@@ -107,12 +108,58 @@ func IsJustReleased(_input_name string) bool {
 	return !curr_ok && prev_ok
 }
 
+var isCurrentMousePressed bool
+var isPreviousMousePressed bool
+
 func IsMousePressed(mouseButton MouseButton) bool {
 	return mousePressed == mouseButton
+}
+
+func IsMousejustPressed() bool {
+	return mousePressed != MouseButtonNull && isCurrentMousePressed != isPreviousMousePressed
+}
+
+func IsMouseJustReleased() bool {
+	return mousePressed == MouseButtonNull && isCurrentMousePressed != isPreviousMousePressed
+}
+
+func onMousePressed() {
+	isCurrentMousePressed = true
+}
+func onMouseReleased() {
+	isCurrentMousePressed = false
+
 }
 
 func GetMousePosition(evt js.Value) Vector2f {
 	rect := canvas.Call("getBoundingClientRect")
 	return NewVector2f((float32(evt.Get("clientX").Int())-float32(rect.Get("left").Int()))/float32(rect.Get("width").Int())*float32(canvas.Get("width").Int()),
 		float32(canvas.Get("height").Int())-(float32(evt.Get("clientY").Int())-float32(rect.Get("top").Int()))/float32(rect.Get("height").Int())*float32(canvas.Get("height").Int()))
+}
+
+var currentNumberOfFingersTouching uint8
+var previousNumberOfFingersTouching uint8
+
+func GetNumberOfFingersTouching() uint8 {
+	return numOfFingersTouching
+}
+
+func AreFingersTouching(_numOfFingers uint8) bool {
+	return numOfFingersTouching >= _numOfFingers
+}
+
+func IsJustTouched(_numOfFingers uint8) bool {
+	return _numOfFingers == currentNumberOfFingersTouching && currentNumberOfFingersTouching != previousNumberOfFingersTouching
+}
+
+func IsJustTouchReleased(_numOfFingers uint8) bool {
+	return _numOfFingers != currentNumberOfFingersTouching && currentNumberOfFingersTouching != previousNumberOfFingersTouching
+}
+
+func onTouchStart(_numOfFingers uint8) {
+	currentNumberOfFingersTouching = _numOfFingers
+}
+
+func onTouchEnd(_numOfFingers uint8) {
+	currentNumberOfFingersTouching = _numOfFingers
 }

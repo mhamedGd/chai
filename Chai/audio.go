@@ -35,13 +35,13 @@ func LoadAudioFile(_file_path string) AudioStream {
 	return audioStream
 }
 
-func (a *AudioSourceComponent) Play(_audio_name string) {
+func (a *AudioSourceComponent) Play(_audio_name string, _async bool) {
 	audioContext.Call("resume").Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// source := audioContext.Call("createBufferSource")
 		// source.Set("buffer", a.audioSources[_audio_name].audioBuffer)
 		// source.Call("connect", audioContext.Get("destination"))
 		// source.Call("start", 0.0)
-		if a.audioSourceData[_audio_name].isPlaying {
+		if a.audioSourceData[_audio_name].isPlaying && !_async {
 			a.audioSourceData[_audio_name].audioSource.Call("stop", 0.0)
 		}
 
@@ -58,6 +58,9 @@ func (a *AudioSourceComponent) Play(_audio_name string) {
 
 		audioSourceData.audioSource.Set("onended", js.FuncOf(func(this js.Value, args []js.Value) any {
 			audioSourceData.isPlaying = false
+			if audioSourceData.loop {
+				a.Play(_audio_name, _async)
+			}
 			return nil
 		}))
 
@@ -78,6 +81,7 @@ type AudioSourceData struct {
 	audioStream *AudioStream
 	isPlaying   bool
 	volume      float32
+	loop        bool
 }
 
 type AudioSourceComponent struct {
@@ -104,9 +108,17 @@ func (a *AudioSourceComponent) GetVolume(_audio_name string) float32 {
 	return a.audioSourceData[_audio_name].volume
 }
 
+func (a *AudioSourceComponent) SetLoop(_audio_name string, _value bool) {
+	audioS := a.audioSourceData[_audio_name]
+	audioS.loop = _value
+	a.audioSourceData[_audio_name] = audioS
+}
+
 func (a *AudioSourceComponent) AddAudioSource(_audio_name string, _audio_stream AudioStream) {
 	audioSourceData := a.audioSourceData[_audio_name]
 	audioSourceData.volume = 1.0
+	audioSourceData.loop = false
+
 	gainNode := audioContext.Call("createGain")
 	gainNode.Get("gain").Set("value", audioSourceData.volume)
 	gainNode.Call("connect", audioContext.Get("destination"))
@@ -118,6 +130,9 @@ func (a *AudioSourceComponent) AddAudioSource(_audio_name string, _audio_stream 
 
 	source.Set("onended", js.FuncOf(func(this js.Value, args []js.Value) any {
 		audioSourceData.isPlaying = false
+		if audioSourceData.loop {
+			a.Play(_audio_name, false)
+		}
 		return nil
 	}))
 

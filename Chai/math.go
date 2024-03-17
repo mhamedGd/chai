@@ -246,6 +246,7 @@ func NewVector2f(x, y float32) Vector2f {
 var Vector2fZero Vector2f = Vector2f{0.0, 0.0}
 var Vector2fOne Vector2f = Vector2f{1.0, 1.0}
 var Vector2fRight Vector2f = Vector2f{1.0, 0.0}
+var Vector2fLeft Vector2f = Vector2f{-1.0, 0.0}
 var Vector2fUp Vector2f = Vector2f{0.0, 1.0}
 
 func (v1 Vector2f) Equal(v2 *Vector2f) bool {
@@ -323,8 +324,9 @@ func (v Vector2f) Perpendicular() Vector2f {
 	return Vector2f{-v.Y, v.X}
 }
 
-func (v *Vector2f) Angle() float32 {
-	return float32(math.Atan2(float64(v.Y), float64(v.X)))
+func (v Vector2f) Angle() float32 {
+	ang := float32(math.Atan2(float64(v.Y), float64(v.X)))
+	return ang
 }
 
 func (v Vector2f) Rotate(_angle float32, _pivot Vector2f) Vector2f {
@@ -471,3 +473,7 @@ func (v Vector2i) ToString() string {
 ############## VECTOR2  - VECTOR2 #################################################
 ###################################################################################
 */
+
+func PointVsRect(_point Vector2f, lower_left, upper_right Vector2f) bool {
+	return (_point.X >= lower_left.X && _point.Y >= lower_left.Y && _point.X <= upper_right.X && _point.Y <= upper_right.Y)
+}
