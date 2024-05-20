@@ -53,6 +53,10 @@ func Translate(refMatrix goglmath.Matrix4, x, y, z, w float32, scale float32) go
 	return m2
 }
 
+func (cam *Camera2D) GetPosition() Vector2f {
+	return cam.position
+}
+
 func Scale(s float32) goglmath.Matrix4 {
 	matrix := goglmath.NewMatrix4Identity()
 	matrix.Scale(float64(s), float64(s), 0, 1)

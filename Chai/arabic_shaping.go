@@ -403,7 +403,10 @@ func shapeWord(input string) string {
 
 	//Convert input into runes
 	inputRunes := []rune(RemoveHarakat(input))
-	for i := range inputRunes {
+	for i, v := range inputRunes {
+		if v == '\n' {
+			continue
+		}
 		//Get Bounding back and front letters
 		var backLetter, frontLetter rune
 		if i-1 >= 0 {
@@ -448,8 +451,20 @@ func shapeWord(input string) string {
 func reverse(s string) string {
 	runes := []rune(s)
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		if s[i] == '\n' {
+			continue
+		}
 		runes[i], runes[j] = runes[j], runes[i]
 	}
+	return string(runes)
+}
+
+func reverseAt(s string, low, high int) string {
+	runes := []rune(s)
+	for i, j := low, high; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+
 	return string(runes)
 }
 
@@ -506,6 +521,30 @@ func IsArabic(input string) bool {
 		}
 	}
 	return isArabic
+}
+
+func isNumber(input rune) bool {
+	return input == '٠' || input == '١' || input == '٢' || input == '٣' || input == '٤' || input == '٥' || input == '٦' || input == '٧' || input == '٨' || input == '٩'
+}
+
+func findWordLowAndHigh(input string) []Vector2i {
+	numsIndices := make([]Vector2i, 0)
+	_input := []rune(input)
+	previousLetterNum := false
+	placeHolderMin := int(0)
+	for i, v := range _input {
+		if isNumber(v) && !previousLetterNum {
+			previousLetterNum = true
+			placeHolderMin = i
+		} else if !isNumber(v) && previousLetterNum {
+			previousLetterNum = false
+			numsIndices = append(numsIndices, Vector2i{X: placeHolderMin, Y: i - 1})
+		} else if isNumber(v) && previousLetterNum && i == len(_input)-1 {
+			numsIndices = append(numsIndices, Vector2i{X: placeHolderMin, Y: i})
+		}
+	}
+
+	return numsIndices
 }
 
 // ToArabicDigits will convert english numbers to arabic numbers in text

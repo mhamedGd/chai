@@ -1,41 +1,39 @@
 package chai
 
 type UIInteractionsComponent struct {
-	Component
 	InteractionBox Vector2f
-	OnCursorEnter  ChaiEvent[*EcsEntity]
-	OnCursorExit   ChaiEvent[*EcsEntity]
-	OnClick        ChaiEvent[*EcsEntity]
-	OnRelease      ChaiEvent[*EcsEntity]
+	OnCursorEnter  ChaiEvent[EntId]
+	OnCursorExit   ChaiEvent[EntId]
+	OnClick        ChaiEvent[EntId]
+	OnRelease      ChaiEvent[EntId]
 	justEntered    bool
+	Disabled       bool
 }
 
-func (t *UIInteractionsComponent) ComponentSet(val interface{}) { *t = val.(UIInteractionsComponent) }
-
 type UIInteractionSystem struct {
-	EcsSystemImpl
+	EcsSystem
 }
 
 func (uis *UIInteractionSystem) Update(dt float32) {
-	EachEntity(UIInteractionsComponent{}, func(entity *EcsEntity, a interface{}) {
-		uiInter := a.(UIInteractionsComponent)
-		if PointVsRect(GetMouseScreenPosition(), entity.Pos.Subtract(uiInter.InteractionBox.Scale(0.5)), entity.Pos.Add(uiInter.InteractionBox.Scale(0.5))) {
-			if !uiInter.justEntered {
-				uiInter.OnCursorEnter.Invoke(entity)
-				uiInter.justEntered = true
+	Iterate2[Transform, UIInteractionsComponent](func(i EntId, t *Transform, uc *UIInteractionsComponent) {
+		if uc.Disabled {
+			return
+		}
+		if PointVsRect(GetMouseScreenPosition(), t.Position.Subtract(uc.InteractionBox.Scale(0.5)), t.Position.Add(uc.InteractionBox.Scale(0.5))) {
+			if !uc.justEntered {
+				uc.OnCursorEnter.Invoke(i)
+				uc.justEntered = true
 			}
-			if IsMousejustPressed() || IsJustTouched(1) {
-				uiInter.OnClick.Invoke(entity)
+			if IsMouseJustPressed() || IsJustTouched(1) {
+				uc.OnClick.Invoke(i)
 			} else if IsMouseJustReleased() || IsJustTouchReleased(1) {
-				uiInter.OnRelease.Invoke(entity)
-				LogF("Just Released")
+				uc.OnRelease.Invoke(i)
 			}
 		} else {
-			if uiInter.justEntered {
-				uiInter.OnCursorExit.Invoke(entity)
-				uiInter.justEntered = false
+			if uc.justEntered {
+				uc.OnCursorExit.Invoke(i)
+				uc.justEntered = false
 			}
 		}
-		WriteComponent(uis.GetEcsEngine(), entity, uiInter)
 	})
 }

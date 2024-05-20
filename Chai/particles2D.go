@@ -35,8 +35,7 @@ func newParticlesShapeBatch(_maxParticles int) *ParticlesShapeBatch {
 }
 
 func (p *ParticlesShapeBatch) addParticle(shape Gfx_Shape, lifeTime float32, pos, velo Vector2f, color RGBA8, size, rotation float32) {
-	i := p.findLastFreeParticle()
-	p.particles[i] = Particle{
+	p.particles[p.lastFreeParticle] = Particle{
 		Shape:          shape,
 		Position:       pos,
 		Velocity:       velo,
@@ -46,6 +45,7 @@ func (p *ParticlesShapeBatch) addParticle(shape Gfx_Shape, lifeTime float32, pos
 		LifePercentage: 1.0,
 		Color:          color,
 	}
+	p.lastFreeParticle = (p.lastFreeParticle + 1) % len(p.particles)
 }
 
 func (p *ParticlesShapeBatch) findLastFreeParticle() int {
@@ -65,7 +65,6 @@ func (p *ParticlesShapeBatch) findLastFreeParticle() int {
 }
 
 type ParticlesShapeComponent struct {
-	Component
 	particlesBatch *ParticlesShapeBatch
 	UpdateParticle func(float32, *Particle)
 }
@@ -100,53 +99,47 @@ func calculateSpreadWithSpeed(index, numOfParticles int, spread_pattern Particle
 	return Vector2fUp.Scale(-speed)
 }
 
-func (t *ParticlesShapeComponent) ComponentSet(val interface{}) { *t = val.(ParticlesShapeComponent) }
-
 type ParticlesShapeUpdateSystem struct {
-	EcsSystemImpl
+	EcsSystem
 }
 
 func (ps *ParticlesShapeUpdateSystem) Update(dt float32) {
-	EachEntity(ParticlesShapeComponent{}, func(entity *EcsEntity, a interface{}) {
-		particleBatch := a.(ParticlesShapeComponent)
-		for i := 0; i < particleBatch.particlesBatch.maxParticles; i++ {
-			particle := particleBatch.particlesBatch.particles[i]
-			if particle.LifePercentage >= 0.0 {
+	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
+		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
+			particle := &psc.particlesBatch.particles[i]
+			if particle.LifePercentage > 0.0 {
 				particle.Position = particle.Position.Add(particle.Velocity)
-				particle.LifePercentage -= 1 / particle.LifeTime * dt
+				particle.LifePercentage -= (1 / particle.LifeTime) * dt
 
-				particleBatch.UpdateParticle(dt, &particle)
-
-				particleBatch.particlesBatch.particles[i] = particle
+				psc.UpdateParticle(dt, particle)
+				if particle.LifePercentage <= 0.0 {
+					psc.particlesBatch.lastFreeParticle = i
+				}
 			}
 		}
-
-		// WriteComponent(ps.GetEcsEngine(), entity, particleBatch)
 	})
 }
 
 type ParticlesShapeRenderSystem struct {
-	EcsSystemImpl
+	EcsSystem
 }
 
 func (ps *ParticlesShapeRenderSystem) Update(dt float32) {
-	EachEntity(ParticlesShapeComponent{}, func(entity *EcsEntity, a interface{}) {
-		particleBatch := a.(ParticlesShapeComponent)
-		for i := 0; i < particleBatch.particlesBatch.maxParticles; i++ {
-			particle := &particleBatch.particlesBatch.particles[i]
+	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
+		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
+			particle := &psc.particlesBatch.particles[i]
 			if particle.LifePercentage > 0.0 {
 				switch particle.Shape {
 				case GFX_SHAPE_RECT:
-					particleBatch.particlesBatch.shapes.DrawRectRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
-					break
+					psc.particlesBatch.shapes.DrawRectRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				case GFX_SHAPE_TRIANGLE:
-					particleBatch.particlesBatch.shapes.DrawTriangleRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
-					break
+					psc.particlesBatch.shapes.DrawTriangleRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				case GFX_SHAPE_CIRCLE:
-					particleBatch.particlesBatch.shapes.DrawCircle(particle.Position, particle.Size, particle.Color)
-					break
-
+					psc.particlesBatch.shapes.DrawCircle(particle.Position, particle.Size, particle.Color)
+				case GFX_SHAPE_FILLRECT:
+					psc.particlesBatch.shapes.DrawFillRectRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				}
+
 			}
 		}
 	})

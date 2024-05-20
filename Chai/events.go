@@ -11,6 +11,12 @@ type ChaiEvent[T any] struct {
 	listeners []EventFunc[T]
 }
 
+func NewChaiEvent[T any]() ChaiEvent[T] {
+	var c ChaiEvent[T]
+	c.init()
+	return c
+}
+
 func (e *ChaiEvent[T]) init() {
 	e.listeners = make([]EventFunc[T], 0)
 }

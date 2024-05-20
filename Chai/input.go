@@ -115,7 +115,7 @@ func IsMousePressed(mouseButton MouseButton) bool {
 	return mousePressed == mouseButton
 }
 
-func IsMousejustPressed() bool {
+func IsMouseJustPressed() bool {
 	return mousePressed != MouseButtonNull && isCurrentMousePressed != isPreviousMousePressed
 }
 

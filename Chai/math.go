@@ -6,12 +6,10 @@ import (
 )
 
 const (
-	PI = math.Pi
+	PI      = math.Pi
+	Rad2Deg = 180.0 / PI
+	Deg2Rad = 1 / Rad2Deg
 )
-
-func Deg2Rad(_degrees float32) float32 {
-	return _degrees * PI / 180.0
-}
 
 /*
 ###################################################################################
@@ -229,6 +227,20 @@ func SignInt(_v int) int {
 
 /*
 ###################################################################################
+############## MAP - MAP - MAP - MAP ##############################################
+*/
+
+func MapFloat32(value, low1, high1, low2, high2 float32) float32 {
+	return low2 + (value-low1)*(high2-low2)/(high1-low1)
+}
+
+/*
+############## MAP - MAP - MAP - MAP ##############################################
+###################################################################################
+*/
+
+/*
+###################################################################################
 ############## VECTOR2  - VECTOR2 #################################################
 */
 
@@ -243,11 +255,14 @@ func NewVector2f(x, y float32) Vector2f {
 	}
 }
 
-var Vector2fZero Vector2f = Vector2f{0.0, 0.0}
-var Vector2fOne Vector2f = Vector2f{1.0, 1.0}
-var Vector2fRight Vector2f = Vector2f{1.0, 0.0}
-var Vector2fLeft Vector2f = Vector2f{-1.0, 0.0}
-var Vector2fUp Vector2f = Vector2f{0.0, 1.0}
+var (
+	Vector2fZero  Vector2f = Vector2f{0.0, 0.0}
+	Vector2fOne   Vector2f = Vector2f{1.0, 1.0}
+	Vector2fRight Vector2f = Vector2f{1.0, 0.0}
+	Vector2fLeft  Vector2f = Vector2f{-1.0, 0.0}
+	Vector2fUp    Vector2f = Vector2f{0.0, 1.0}
+	Vector2fDown  Vector2f = Vector2f{0.0, -1.0}
+)
 
 func (v1 Vector2f) Equal(v2 *Vector2f) bool {
 	return v1.X == v2.X && v1.Y == v2.Y
@@ -314,6 +329,10 @@ func (v *Vector2f) LengthSquared() float32 {
 func (v Vector2f) Normalize() Vector2f {
 	leng := v.Length()
 	return Vector2f{v.X / leng, v.Y / leng}
+}
+
+func (v1 Vector2f) Distance(v2 Vector2f) float32 {
+	return float32(math.Sqrt(math.Pow(float64(v2.X-v1.X), 2) + math.Pow(float64(v2.Y-v1.Y), 2)))
 }
 
 func DotProduct(v1, v2 Vector2f) float32 {

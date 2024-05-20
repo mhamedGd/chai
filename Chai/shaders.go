@@ -32,7 +32,7 @@ func (_sp *ShaderProgram) ParseShader(_vertexSource string, _fragmentSource stri
 }
 
 func (_sp *ShaderProgram) ParseShaderFromFile(_filePath string) {
-	resp, err := http.Get(app_url + "/" + _filePath)
+	resp, err := http.Get(app_url + _filePath)
 	if err != nil {
 		LogF(err.Error())
 	}

@@ -3,7 +3,7 @@ package chai
 import (
 	"image"
 	"image/png"
-	"net/http"
+	"io"
 	"syscall/js"
 )
 
@@ -58,16 +58,14 @@ func LoadPng(_filePath string, _textureSettings *TextureSettings) Texture2D {
 
 	var tempTexture Texture2D
 
-	resp, err := http.Get(app_url + "/" + _filePath)
+	pngChannel := make(chan io.ReadCloser)
+	go LoadResponseBody(_filePath, pngChannel)
+	pngChannelBody := <-pngChannel
+	img, err := png.Decode(pngChannelBody)
 	if err != nil {
 		LogF("%v", err.Error())
 	}
-	img, err := png.Decode(resp.Body)
-	if err != nil {
-		LogF("%v", err.Error())
-	}
-
-	resp.Body.Close()
+	defer pngChannelBody.Close()
 
 	tempTexture.Width = img.Bounds().Dx()
 	tempTexture.Height = img.Bounds().Dy()

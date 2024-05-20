@@ -110,7 +110,11 @@ func GetRandomRGBA8() RGBA8 {
 	return NewRGBA8(Float1ToUint8_255(rand.Float32()), Float1ToUint8_255(rand.Float32()), Float1ToUint8_255(rand.Float32()), 255)
 }
 
-var WHITE = RGBA8{255, 255, 255, 255}
+var (
+	WHITE = RGBA8{255, 255, 255, 255}
+	BLACK = RGBA8{0, 0, 0, 255}
+	RED   = RGBA8{255, 0, 0, 255}
+)
 
 const VertexSize = 20
 
@@ -143,6 +147,7 @@ const (
 	GFX_SHAPE_CIRCLE   = Gfx_Shape(0x000000f1)
 	GFX_SHAPE_RECT     = Gfx_Shape(0x000000f2)
 	GFX_SHAPE_TRIANGLE = Gfx_Shape(0x000000f3)
+	GFX_SHAPE_FILLRECT = Gfx_Shape(0x000000f4)
 )
 
 func (_shapesB *ShapeBatch) Init() {
@@ -261,6 +266,38 @@ func (_sp *ShapeBatch) DrawTriangleRotated(_center, _dimensions Vector2f, _color
 	_sp.DrawLine(pos[numOfVertices-1], pos[0], _color)
 }
 
+func (_sp *ShapeBatch) DrawFillTriangle(_center, _dimensions Vector2f, _color RGBA8) {
+	offset := _dimensions.Scale(0.5)
+
+	vertsSize := len(_sp.Vertices)
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
+
+	_sp.Indices = append(_sp.Indices, int32(vertsSize))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+}
+
+func (_sp *ShapeBatch) DrawFillTriangleRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
+	offset := _dimensions.Scale(0.5)
+
+	vertsSize := len(_sp.Vertices)
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
+
+	_sp.Indices = append(_sp.Indices, int32(vertsSize))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+}
+
 func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA8) {
 	numOfVertices := 16
 
@@ -293,6 +330,23 @@ func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8)
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
 }
 
+func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color RGBA8) {
+	offset := NewVector2f(_dimensions.X/2.0, 0.0)
+
+	vertsSize := len(_sp.Vertices)
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Subtract(offset), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Add(offset), Color: _color})
+
+	_sp.Indices = append(_sp.Indices, int32(vertsSize))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+}
+
 func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	offset := _dimensions.Scale(0.5)
 
@@ -310,11 +364,34 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
 }
 
+func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom, _dimensions Vector2f, _color RGBA8, _rotation float32) {
+	// offset := NewVector2f(_dimensions.X/2.0, 0.0)
+	offset := _dimensions.Scale(0.5)
+
+	vertsSize := len(_sp.Vertices)
+	//Bottom Left
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, 0.0).Rotate(_rotation, _bottom), Color: _color})
+	//Top Left
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y*2).Rotate(_rotation, _bottom), Color: _color})
+	//Bottom Right
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, 0).Rotate(_rotation, _bottom), Color: _color})
+	//Top Right
+	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, offset.Y*2.0).Rotate(_rotation, _bottom), Color: _color})
+
+	_sp.Indices = append(_sp.Indices, int32(vertsSize))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+}
+
 func (_sp *ShapeBatch) finalize() {
 	if len(_sp.Vertices) == 0 {
 		_sp.NumberOfElements = 0
 		return
 	}
+
 	canvasContext.Call("bindVertexArray", _sp.vao)
 
 	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices)

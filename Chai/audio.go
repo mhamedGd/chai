@@ -72,6 +72,21 @@ func (a *AudioSourceComponent) Play(_audio_name string, _async bool) {
 	}))
 }
 
+func SuspendAudioContext() {
+	audioContext.Call("suspend")
+}
+func ResumeAudioContext() {
+	audioContext.Call("resume")
+}
+
+func triggerAudioContextPlaying() {
+	if audioContext.Get("state").String() == "running" {
+		SuspendAudioContext()
+	} else {
+		ResumeAudioContext()
+	}
+}
+
 type audioJsSource = js.Value
 type gainJsNode = js.Value
 
@@ -85,7 +100,6 @@ type AudioSourceData struct {
 }
 
 type AudioSourceComponent struct {
-	Component
 	audioSourceData map[string]AudioSourceData
 }
 
@@ -143,14 +157,10 @@ func (a *AudioSourceComponent) AddAudioSource(_audio_name string, _audio_stream 
 	a.audioSourceData[_audio_name] = audioSourceData
 }
 
-func (t *AudioSourceComponent) ComponentSet(val interface{}) { *t = val.(AudioSourceComponent) }
+// type AudioPlaySystem struct {
+// 	EcsSystem
+// }
 
-type AudioPlaySystem struct {
-	EcsSystemImpl
-}
+// func (a *AudioPlaySystem) Update(dt float32) {
 
-func (a *AudioPlaySystem) Update(dt float32) {
-	EachEntity(AudioSourceComponent{}, func(entity *EcsEntity, a interface{}) {
-
-	})
-}
+// }

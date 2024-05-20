@@ -1,350 +1,247 @@
 package chai
 
-import box2d "github.com/ByteArena/box2d"
+import (
+	cp "github.com/jakecoffman/cp/v2"
+	"github.com/mhamedGd/chai/ecs"
+)
 
 type PhysicsBodyType uint8
 
-const Type_BodyStatic PhysicsBodyType = 0
-const Type_BodyDynamic PhysicsBodyType = 1
+const (
+	Type_BodyStatic    PhysicsBodyType = 0
+	Type_BodyDynamic   PhysicsBodyType = 1
+	Type_BodyKinematic PhysicsBodyType = 2
+)
+
+const (
+	PhysicsLayer_All uint = 0xffffffff
+)
 
 type ColliderShape uint8
 
 const Shape_CircleBody ColliderShape = 0
 const Shape_RectBody ColliderShape = 1
 
-func BoxVector2f(v Vector2f) box2d.B2Vec2 {
-	return box2d.MakeB2Vec2(float64(v.X), float64(v.Y))
+func cpVector2f(v Vector2f) cp.Vector {
+	return cp.Vector{float64(v.X), float64(v.Y)}
 }
 
-func BoxVector2XY(x, y float32) box2d.B2Vec2 {
-	return box2d.MakeB2Vec2(float64(x), float64(y))
-}
-
-func Vector2fFromBoxVec(vec box2d.B2Vec2) Vector2f {
-	return NewVector2f(float32(vec.X), float32(vec.Y))
+func chaiCPVector(v cp.Vector) Vector2f {
+	return NewVector2f(float32(v.X), float32(v.Y))
 }
 
 type PhysicsWorld struct {
-	box2dWorld box2d.B2World
+	cpSpace *cp.Space
 }
 
-var worldContactListener ChaiContactListener
+// var worldContactListener ChaiContactListener
+var dCollisionHandler *cp.CollisionHandler
+var sCollisionHandler *cp.CollisionHandler
+var kCollisionHandler *cp.CollisionHandler
 
 func newPhysicsWorld(gravity Vector2f) PhysicsWorld {
-	worldContactListener = ChaiContactListener{}
+	// worldContactListener = ChaiContactListener{}
+
+	s := cp.NewSpace()
+	s.Iterations = 20
+	s.SetGravity(cpVector2f(gravity))
+
+	dCollisionHandler = s.NewWildcardCollisionHandler(cp.BODY_DYNAMIC)
+	sCollisionHandler = s.NewWildcardCollisionHandler(cp.BODY_STATIC)
+	kCollisionHandler = s.NewWildcardCollisionHandler(cp.BODY_KINEMATIC)
+
+	dCollisionHandler.BeginFunc = beginCollision
+	sCollisionHandler.BeginFunc = beginCollision
+	kCollisionHandler.BeginFunc = beginCollision
+	dCollisionHandler.SeparateFunc = endCollision
+	sCollisionHandler.SeparateFunc = endCollision
+	kCollisionHandler.SeparateFunc = endCollision
+
 	return PhysicsWorld{
-		box2dWorld: box2d.MakeB2World(BoxVector2f(gravity)),
+		cpSpace: s,
 	}
 }
 
-type PhysicsBody struct {
-	BodyType         PhysicsBodyType
-	ColliderShape    ColliderShape
-	body             *box2d.B2Body
-	fixture          *box2d.B2Fixture
-	OwnerEntity      *EcsEntity
-	IsTrigger        bool
-	OnCollisionStart ChaiEvent[*Collision]
-	OnCollisionEnd   ChaiEvent[*Collision]
-	Debug_Tint       RGBA8
+func rbTypeToCpType(body *cp.Body, t PhysicsBodyType) {
+	switch t {
+	case Type_BodyDynamic:
+		body.SetType(cp.BODY_DYNAMIC)
+	case Type_BodyStatic:
+		body.SetType(cp.BODY_STATIC)
+	case Type_BodyKinematic:
+		body.SetType(cp.BODY_KINEMATIC)
+	}
 }
 
-func newPhysicsBody(bodyType PhysicsBodyType, colliderShape ColliderShape, ent *EcsEntity, density, friction, restitution float32, isTrigger bool, bodyDef *box2d.B2BodyDef, bodySize Vector2f) *PhysicsBody {
-	phyBody := PhysicsBody{}
-	body := GetPhysicsWorld().box2dWorld.CreateBody(bodyDef)
+type RigidBodyComponent struct {
+	cpBody           *cp.Body
+	cpShape          *cp.Shape
+	RBSettings       *RigidBodySettings
+	OwnerEntityId    EntId
+	OnCollisionBegin ChaiEvent[Collision]
+	OnCollisionEnd   ChaiEvent[Collision]
+	Offset           Vector2f
+}
 
-	fd := box2d.MakeB2FixtureDef()
-	switch colliderShape {
+func freeRigidbody(rb *RigidBodyComponent) {
+	physics_world.cpSpace.RemoveShape(rb.cpShape)
+
+	physics_world.cpSpace.RemoveBody(rb.cpBody)
+}
+
+type RigidBodySettings struct {
+	IsTrigger                  bool
+	BodyType                   PhysicsBodyType
+	ColliderShape              ColliderShape
+	StartPosition              Vector2f
+	Offset                     Vector2f
+	StartDimensions            Vector2f
+	StartRotation              float32
+	Mass, Friction, Elasticity float32
+	ConstrainRotation          bool
+	PhysicsLayer               uint
+}
+
+func NewRigidBody(entityId EntId, rbSettings *RigidBodySettings) RigidBodyComponent {
+	size := cpVector2f(rbSettings.StartDimensions).Mult(0.5)
+	body := cp.NewBody(0.0, 0.0)
+
+	body.SetPosition(cpVector2f(rbSettings.StartPosition))
+	body.SetAngle(float64(rbSettings.StartRotation) * Deg2Rad)
+
+	rbTypeToCpType(body, rbSettings.BodyType)
+	var shape *cp.Shape
+	switch rbSettings.ColliderShape {
 	case Shape_RectBody:
-		shape := box2d.MakeB2PolygonShape()
-		shape.SetAsBox(float64(bodySize.X)/2.0, float64(bodySize.Y)/2.0)
-		fd.Shape = &shape
-		break
+		// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
+		box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
+		shape = cp.NewBox2(body, box, 0.0)
+		body.SetMoment(cp.MomentForBox2(float64(rbSettings.Mass), box))
+		shape.SetMass(float64(rbSettings.Mass))
+		// shape.SetCollisionType()
 	case Shape_CircleBody:
-		shape := box2d.MakeB2CircleShape()
-		shape.SetRadius(float64(bodySize.X))
-		fd.Shape = &shape
-		break
-
+		shape = cp.NewCircle(body, size.X, cpVector2f(Vector2fZero))
+		body.SetMoment(cp.MomentForCircle(float64(rbSettings.Mass), 0.0, float64(2*PI*rbSettings.StartDimensions.X), cpVector2f(Vector2fZero)))
+		shape.SetMass(float64(rbSettings.Mass))
 	}
 
-	fd.Density = float64(density)
-	fd.Friction = float64(friction)
-	fd.Restitution = float64(restitution)
-	fixture := body.CreateFixtureFromDef(&fd)
-	fixture.SetSensor(isTrigger)
-
-	phyBody = PhysicsBody{
-		BodyType:      bodyType,
-		ColliderShape: colliderShape,
-		body:          body,
-		fixture:       fixture,
-		OwnerEntity:   ent,
-		IsTrigger:     isTrigger,
-		Debug_Tint:    WHITE,
+	if rbSettings.ConstrainRotation {
+		body.SetMoment(cp.INFINITY)
 	}
-	phyBody.OnCollisionStart.init()
-	phyBody.OnCollisionEnd.init()
-	phyBody.body.SetUserData(&phyBody)
 
-	return &phyBody
-}
+	shape.Filter.Categories = PhysicsLayer_All
+	shape.Filter.Mask = rbSettings.PhysicsLayer
 
-func (pb *PhysicsBody) GetPosition() Vector2f {
-	return NewVector2f(float32(pb.body.GetPosition().X), float32(pb.body.GetPosition().Y))
-}
+	shape.SetElasticity(float64(rbSettings.Elasticity))
+	shape.SetFriction(float64(rbSettings.Friction))
+	shape.SetSensor(rbSettings.IsTrigger)
 
-type ChaiContactListener struct {
-	box2d.B2ContactListenerInterface
-}
+	body.UserData = entityId
+	GetPhysicsWorld().cpSpace.AddBody(body)
+	GetPhysicsWorld().cpSpace.AddShape(shape)
 
-func (listener ChaiContactListener) BeginContact(contact box2d.B2ContactInterface) {
-	// Handle the beginning of a contact
-	phyBodyA := contact.GetFixtureA().GetBody().GetUserData().(*PhysicsBody)
-	phyBodyB := contact.GetFixtureB().GetBody().GetUserData().(*PhysicsBody)
-
-	var worldManifold box2d.B2WorldManifold
-	contact.GetWorldManifold(&worldManifold)
-	collisionPoint := Vector2fFromBoxVec(worldManifold.Points[0])
-
-	phyBodyA.OnCollisionStart.Invoke(&Collision{CollisionPoint: collisionPoint, FirstBody: phyBodyA, SecondBody: phyBodyB})
-	phyBodyB.OnCollisionStart.Invoke(&Collision{CollisionPoint: collisionPoint, FirstBody: phyBodyB, SecondBody: phyBodyA})
-}
-
-func (listener ChaiContactListener) EndContact(contact box2d.B2ContactInterface) {
-	phyBodyA := contact.GetFixtureA().GetBody().GetUserData().(*PhysicsBody)
-	phyBodyB := contact.GetFixtureB().GetBody().GetUserData().(*PhysicsBody)
-
-	phyBodyA.OnCollisionEnd.Invoke(&Collision{CollisionPoint: Vector2fZero, FirstBody: phyBodyA, SecondBody: phyBodyB})
-	phyBodyB.OnCollisionEnd.Invoke(&Collision{CollisionPoint: Vector2fZero, FirstBody: phyBodyB, SecondBody: phyBodyA})
-}
-
-func (listener ChaiContactListener) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {
-	// Handle pre-solving the contact
-}
-
-func (listener ChaiContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
-	// Handle post-solving the contact
-}
-
-type Collision struct {
-	CollisionPoint Vector2f
-	FirstBody      *PhysicsBody
-	SecondBody     *PhysicsBody
-}
-
-type DynamicBodyComponent struct {
-	Active   bool
-	phy_body *PhysicsBody
-}
-
-type DynamicBodySettings struct {
-	BodySize     Vector2f
-	BodyShape    ColliderShape
-	Mass         float32
-	Friction     float32
-	Restitution  float32
-	GravityScale float32
-}
-
-func (dc *DynamicBodyComponent) GetPhyiscsBody() *PhysicsBody {
-	return dc.phy_body
-}
-
-func (dc *DynamicBodyComponent) SetPosition(newPos Vector2f) {
-	dc.phy_body.body.SetTransform(BoxVector2f(newPos), dc.phy_body.body.GetAngle())
-}
-
-func (dc *DynamicBodyComponent) SetPositionXY(x, y float32) {
-	dc.phy_body.body.SetTransform(BoxVector2XY(x, y), dc.phy_body.body.GetAngle())
-}
-
-func (dc *DynamicBodyComponent) GetLinearVelocity() Vector2f {
-	return NewVector2f(float32(dc.phy_body.body.M_linearVelocity.X), float32(dc.phy_body.body.M_linearVelocity.Y))
-}
-
-func (dc *DynamicBodyComponent) SetLinearVelocity(velo Vector2f) {
-	dc.phy_body.body.M_linearVelocity = BoxVector2f(velo)
-}
-
-func (dc *DynamicBodyComponent) SetLinearVelocityXY(x_velo, y_velo float32) {
-	dc.phy_body.body.M_linearVelocity = BoxVector2XY(x_velo, y_velo)
-}
-
-func (dc *DynamicBodyComponent) GetAngularVelocity() float32 {
-	return float32(dc.phy_body.body.M_angularVelocity)
-}
-
-func (dc *DynamicBodyComponent) SetAngularVelocity(ang_velo float32) {
-	dc.phy_body.body.M_angularVelocity = float64(ang_velo)
-}
-
-func (dc *DynamicBodyComponent) GetAppliedForce() Vector2f {
-	return Vector2fFromBoxVec(dc.phy_body.body.M_force)
-}
-
-func (dc *DynamicBodyComponent) ApplyForce(force_vector Vector2f) {
-	dc.phy_body.body.ApplyForceToCenter(BoxVector2f(force_vector), true)
-}
-
-func (pb *PhysicsBody) ApplyForceToBody(force_vector Vector2f) {
-	pb.body.ApplyForceToCenter(BoxVector2f(force_vector), true)
-}
-
-func (dc *DynamicBodyComponent) ApplyForceXY(x_force, y_force float32) {
-	dc.phy_body.body.ApplyForceToCenter(BoxVector2XY(x_force, y_force), true)
-}
-
-func (dc *DynamicBodyComponent) ApplyAngularForce(_force float32) {
-	dc.phy_body.body.ApplyAngularImpulse(float64(_force), true)
-}
-
-func (dc *DynamicBodyComponent) SetActive(_value bool) {
-	dc.Active = _value
-	dc.phy_body.body.SetActive(_value)
-}
-
-func (t *DynamicBodyComponent) ComponentSet(val interface{}) { *t = val.(DynamicBodyComponent) }
-
-func NewDynamicBody(ent *EcsEntity, bodySettings DynamicBodySettings) DynamicBodyComponent {
-
-	dynamicComp := DynamicBodyComponent{}
-	bodyDef := box2d.MakeB2BodyDef()
-	bodyDef.Position = BoxVector2f(ent.Pos)
-	bodyDef.Angle = float64(ent.Rot * PI / 180.0)
-
-	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.AllowSleep = false
-	bodyDef.FixedRotation = false
-	bodyDef.GravityScale = float64(bodySettings.GravityScale)
-
-	dynamicComp = DynamicBodyComponent{
-		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyDynamic, bodySettings.BodyShape, ent, bodySettings.Mass, bodySettings.Friction, bodySettings.Restitution, false, &bodyDef, bodySettings.BodySize.SubtractXY(0.01, 0.01)),
+	return RigidBodyComponent{
+		cpBody:           body,
+		cpShape:          shape,
+		RBSettings:       rbSettings,
+		OwnerEntityId:    entityId,
+		OnCollisionBegin: ChaiEvent[Collision]{listeners: make([]EventFunc[Collision], 0)},
+		OnCollisionEnd:   ChaiEvent[Collision]{listeners: make([]EventFunc[Collision], 0)},
+		Offset:           rbSettings.Offset,
 	}
-	return dynamicComp
 }
 
-type DynamicBodyUpdateSystem struct {
-	EcsSystemImpl
+func (rb *RigidBodyComponent) SetPosition(newPosition Vector2f) {
+	rb.cpBody.SetPosition(cpVector2f(newPosition))
 }
 
-func (ds *DynamicBodyUpdateSystem) Update(dt float32) {
-	EachEntity(DynamicBodyComponent{}, func(entity *EcsEntity, a interface{}) {
-		dComp := a.(DynamicBodyComponent)
-		entity.Pos.X = dComp.phy_body.GetPosition().X
-		entity.Pos.Y = dComp.phy_body.GetPosition().Y
-		entity.Rot = float32(dComp.phy_body.body.GetAngle() * 180.0 / PI)
-
-		// if dComp.phy_body.ColliderShape == Shape_CircleCollider {
-		// 	Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, dComp.phy_body.Debug_Tint)
-		// } else {
-		// 	Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, dComp.phy_body.Debug_Tint, entity.Rot)
-		// }
-		switch dComp.phy_body.ColliderShape {
-		case Shape_RectBody:
-			Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, dComp.phy_body.Debug_Tint, entity.Rot)
-			break
-		case Shape_CircleBody:
-			Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, dComp.phy_body.Debug_Tint)
-			break
-		}
-	})
+func (rb *RigidBodyComponent) SetRotation(newRotation float32) {
+	rb.cpBody.SetAngle(float64(newRotation))
 }
 
-type StaticBodyComponent struct {
-	Active   bool
-	phy_body *PhysicsBody
+func (rb *RigidBodyComponent) SetVelocity(newVelocity Vector2f) {
+	rb.cpBody.SetVelocity(float64(newVelocity.X), float64(newVelocity.Y))
 }
 
-type StaticBodySettings struct {
-	BodySize  Vector2f
-	BodyShape ColliderShape
-	Friction  float32
+func (rb *RigidBodyComponent) SetAngularVelocity(newAngularVelocity float32) {
+	rb.cpBody.SetAngularVelocity(float64(newAngularVelocity))
 }
 
-func (t *StaticBodyComponent) ComponentSet(val interface{}) { *t = val.(StaticBodyComponent) }
-
-func (sb *StaticBodyComponent) GetPhyiscsBody() *PhysicsBody {
-	return sb.phy_body
+func (rb *RigidBodyComponent) ApplyForce(forceAmount Vector2f) {
+	rb.cpBody.ApplyForceAtWorldPoint(cpVector2f(forceAmount), cpVector2f(rb.GetPosition()))
 }
 
-func NewStaticBody(ent *EcsEntity, bodySettings StaticBodySettings) StaticBodyComponent {
-	staticComp := StaticBodyComponent{}
-	bodyDef := box2d.MakeB2BodyDef()
-	bodyDef.Position = BoxVector2f(ent.Pos)
-	bodyDef.Type = box2d.B2BodyType.B2_staticBody
-	bodyDef.AllowSleep = false
-	bodyDef.FixedRotation = false
-	bodyDef.Angle = float64(ent.Rot * PI / 180.0)
-
-	staticComp = StaticBodyComponent{
-		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyStatic, bodySettings.BodyShape, ent, 0.0, bodySettings.Friction, 0.0, false, &bodyDef, bodySettings.BodySize),
-	}
-	return staticComp
+func (rb *RigidBodyComponent) GetPosition() Vector2f {
+	return chaiCPVector(rb.cpBody.Position())
 }
 
-func NewTriggerArea(ent *EcsEntity, bodySettings StaticBodySettings) StaticBodyComponent {
-	staticComp := StaticBodyComponent{}
-	bodyDef := box2d.MakeB2BodyDef()
-	bodyDef.Position = BoxVector2f(ent.Pos)
-	bodyDef.Type = box2d.B2BodyType.B2_staticBody
-	bodyDef.AllowSleep = false
-	bodyDef.FixedRotation = false
-	bodyDef.Angle = float64(ent.Rot * PI / 180.0)
-
-	staticComp = StaticBodyComponent{
-		Active:   true,
-		phy_body: newPhysicsBody(Type_BodyStatic, bodySettings.BodyShape, ent, 0.0, 0.0, 0.0, true, &bodyDef, bodySettings.BodySize),
-	}
-	return staticComp
+func (rb *RigidBodyComponent) GetVelocity() Vector2f {
+	return chaiCPVector(rb.cpBody.Velocity())
 }
 
-type BoxCastQueryCallback struct {
-	FoundBodies []*box2d.B2Body
+func (rb *RigidBodyComponent) GetAngularVelocity() float32 {
+	return float32(rb.cpBody.AngularVelocity() * Rad2Deg)
 }
 
-func (callback *BoxCastQueryCallback) ReportFixture(fixture *box2d.B2Fixture) bool {
-	callback.FoundBodies = append(callback.FoundBodies, fixture.GetBody())
+func (rb *RigidBodyComponent) OnCollisionTouch() {
+}
+
+func beginCollision(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool {
+	bodyA, bodyB := arb.Bodies()
+
+	rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
+
+	rbA.OnCollisionBegin.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
 
 	return true
 }
 
-func OverlapBox(lowerLeft, topRight Vector2f) (*PhysicsBody, bool) {
-	aabb := box2d.MakeB2AABB()
-	aabb.LowerBound.Set(float64(lowerLeft.X), float64(lowerLeft.Y))
-	aabb.UpperBound.Set(float64(topRight.X), float64(topRight.Y))
+func endCollision(arb *cp.Arbiter, space *cp.Space, userData interface{}) {
+	bodyA, bodyB := arb.Bodies()
 
-	bodiesQuery := &BoxCastQueryCallback{}
-	bodiesQuery.FoundBodies = make([]*box2d.B2Body, 0)
+	rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
 
-	physics_world.box2dWorld.QueryAABB(bodiesQuery.ReportFixture, aabb)
-	if len(bodiesQuery.FoundBodies) > 0 {
-		return bodiesQuery.FoundBodies[0].GetUserData().(*PhysicsBody), true
-	} else {
-		return nil, false
-	}
+	rbA.OnCollisionEnd.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
+}
+
+type Collision struct {
+	CollisionPoint Vector2f
+	EntA           EntId
+	EntB           EntId
 }
 
 type RaycastHit struct {
-	HasHit      bool
-	HitPosition Vector2f
-	HitBody     *PhysicsBody
-	Normal      Vector2f
+	HasHit       bool
+	OriginPoint  Vector2f
+	HitPosition  Vector2f
+	Normal       Vector2f
+	PhysicsLayer uint
 }
 
-func Raycast(origin, direction Vector2f, distance float32) RaycastHit {
+func RayCast(origin, direction Vector2f, distance float32, physicsLayer uint) RaycastHit {
 	hit := RaycastHit{}
+	info := physics_world.cpSpace.SegmentQueryFirst(cpVector2f(origin), cpVector2f(origin.Add(direction.Scale(distance))), 0.0, cp.NewShapeFilter(cp.NO_GROUP, physicsLayer, physicsLayer))
 
-	physics_world.box2dWorld.RayCast(func(fixture *box2d.B2Fixture, point, normal box2d.B2Vec2, fraction float64) float64 {
-		hit.HasHit = true
-		hit.HitPosition = Vector2fFromBoxVec(point)
-		hit.HitBody = fixture.GetBody().GetUserData().(*PhysicsBody)
-		hit.Normal = Vector2fFromBoxVec(normal)
-
-		return fraction
-	}, BoxVector2f(origin), BoxVector2f(origin.Add(direction.Scale(distance))))
+	hit.OriginPoint = origin
+	hit.HitPosition = chaiCPVector(info.Point)
+	hit.Normal = chaiCPVector(info.Normal)
+	hit.HasHit = info.Shape != nil
 
 	return hit
+}
+
+type RigidBodySystem struct {
+	EcsSystem
+}
+
+func (rbs *RigidBodySystem) Update(dt float32) {
+	Iterate2[Transform, RigidBodyComponent](func(i EntId, t *Transform, rb *RigidBodyComponent) {
+		// 		t.Position.X = dbc.phy_body.GetPosition().X
+		// 		t.Position.Y = dbc.phy_body.GetPosition().Y
+		// 		t.Rotation = float32(dbc.phy_body.body.GetAngle() * Rad2Deg)
+		t.Position.X = float32(rb.cpBody.Position().X) + rb.Offset.X
+		t.Position.Y = float32(rb.cpBody.Position().Y) + rb.Offset.Y
+		t.Rotation = float32(rb.cpBody.Angle() * Rad2Deg)
+
+	})
 }

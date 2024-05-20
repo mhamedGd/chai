@@ -1,17 +1,14 @@
-module chai_examples
+module Chai_Examples
 
-go 1.21.0
+go 1.22.1
 
 replace github.com/mhamedGd/chai => ../Chai
 
 require github.com/mhamedGd/chai v0.0.0
 
 require (
-	github.com/ByteArena/box2d v1.0.2 // indirect
-	github.com/jfreymuth/oggvorbis v1.0.5 // indirect
-	github.com/jfreymuth/vorbis v1.0.2 // indirect
+	github.com/jakecoffman/cp/v2 v2.0.2 // indirect
 	github.com/udhos/goglmath v1.0.0 // indirect
 	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-
 )

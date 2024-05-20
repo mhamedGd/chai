@@ -5,6 +5,7 @@ import (
 	"syscall/js"
 )
 
+var running bool
 var app_url string
 
 type App struct {
@@ -13,14 +14,14 @@ type App struct {
 	Title    string
 	OnStart  func()
 	OnUpdate func(float32)
-	OnDraw   func()
+	OnDraw   func(float32)
 	OnEvent  func(*AppEvent)
 }
 
 // Used to make the update function only available in the local App struct, to the whole file
 var tempStart func()
 var tempUpdate func(float32)
-var tempDraw func()
+var tempDraw func(float32)
 
 /*
 USING THE EventFunc[T] type ------- (1)
@@ -36,7 +37,6 @@ USING THE EventFunc[T] type ------- (1)
 
 var currentWidth, currentHeight int
 var canvas js.Value
-var debug_console js.Value
 var appRef *App
 
 func GetCanvasWidth() int {
@@ -76,12 +76,12 @@ func (_app *App) fillDefaults() {
 		}
 	}
 	if _app.OnUpdate == nil {
-		_app.OnUpdate = func(f float32) {
+		_app.OnUpdate = func(dt float32) {
 
 		}
 	}
 	if _app.OnDraw == nil {
-		_app.OnDraw = func() {
+		_app.OnDraw = func(dt float32) {
 
 		}
 	}
@@ -93,6 +93,8 @@ func (_app *App) fillDefaults() {
 }
 
 func Run(_app *App) {
+	running = true
+
 	// defer func() {
 	// 	if r := recover(); r != nil {
 	// 		ErrorF("PANICKED - %v", r)
@@ -110,7 +112,6 @@ func Run(_app *App) {
 	js.Global().Get("document").Set("title", _app.Title)
 
 	canvas = js.Global().Get("document").Call("getElementById", "viewport")
-	debug_console = js.Global().Get("document").Call("querySelector", ".debug-console")
 
 	canvasContext = canvas.Call("getContext", "webgl2")
 	Assert(!canvasContext.IsNull(), "CANVAS: Failed to Get Context")
@@ -126,22 +127,35 @@ func Run(_app *App) {
 	tempDraw = _app.OnDraw
 
 	audioContext = js.Global().Get("AudioContext").New()
+	js.Global().Get("document").Call("addEventListener", "visibilitychange", js.FuncOf(func(this js.Value, args []js.Value) any {
+		if this.Get("visibilityState").String() == "hidden" {
+			SuspendAudioContext()
+		} else {
+			ResumeAudioContext()
+		}
+
+		return 0
+	}))
+
+	js.Global().Call("addEventListener", "focus", js.FuncOf(func(this js.Value, args []js.Value) any {
+		ResumeAudioContext()
+
+		return 0
+	}))
+	js.Global().Call("addEventListener", "blur", js.FuncOf(func(this js.Value, args []js.Value) any {
+		SuspendAudioContext()
+
+		return 0
+	}))
 
 	initTextures()
 	InitInputs()
-	physics_world = newPhysicsWorld(NewVector2f(0.0, -40))
-	physics_world.box2dWorld.SetContactListener(worldContactListener)
+	physics_world = newPhysicsWorld(NewVector2f(0.0, -200.0))
+	// physics_world.box2dWorld.SetContactListener(worldContactListener)
 
 	//js.Global().Set("js_start", js.FuncOf(JSStart))
 	js.Global().Set("js_update", js.FuncOf(JSUpdate))
 	js.Global().Set("js_draw", js.FuncOf(JSDraw))
-
-	js.Global().Set("js_dpad_up", js.FuncOf(JSDpadUp))
-	js.Global().Set("js_dpad_down", js.FuncOf(JSDpadDown))
-	js.Global().Set("js_dpad_left", js.FuncOf(JSDpadLeft))
-	js.Global().Set("js_dpad_right", js.FuncOf(JSDpadRight))
-	js.Global().Set("js_main_button", js.FuncOf(JSMainButton))
-	js.Global().Set("js_side_button", js.FuncOf(JSSideButton))
 
 	// if I put it above the "js_start" then it would take a lot of time to run
 	Cam.Init(*_app)
@@ -149,7 +163,7 @@ func Run(_app *App) {
 	Cam.Update(*_app)
 
 	uiCam.Init(*_app)
-	uiCam.position.AddXY(-float32(appRef.Width)/2.0, -float32(appRef.Height)/2.0)
+	//uiCam.position.AddXY(-float32(appRef.Width)/2.0, -float32(appRef.Height)/2.0)
 	uiCam.Update(*_app)
 
 	Shapes.Init()
@@ -201,7 +215,6 @@ func Run(_app *App) {
 
 		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
 		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
-
 		_app.OnEvent(ae)
 	})
 	addEventListenerWindow(JS_TOUCHEND, func(ae *AppEvent) {
@@ -227,8 +240,13 @@ func Run(_app *App) {
 			event.RemoveListener(print_s)
 	*/
 
+	/*
+		////////// FINAL CHECKS ////////////
+	*/
+
 	//custom_func("STRING") ------- (1)
 	_app.OnStart()
+	Assert(current_scene != nil, "Current Scene is none")
 	if !started {
 		started = true
 	}
@@ -255,23 +273,41 @@ var deltaTime float32
 
 const CAP_DELTA_TIME float32 = 50.0 / 1000.0
 
+const FIXED_UPDATE_INTERVAL float32 = 1.0 / 60.0
+const MAX_FIXED_CYCLES_PER_FRAME = 5
+
+var timeAccumulation float32
+
 func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
+	// LogF("Canvas Size: %v", GetCurrentCanvasPageSize())
+
 	deltaTime = float32(inputs[0].Float())
 	if deltaTime > CAP_DELTA_TIME {
 		deltaTime = CAP_DELTA_TIME
 	}
+
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
-	tempUpdate(deltaTime)
 	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
 	uiCam.Update(*appRef)
+	tempUpdate(deltaTime)
 	ElapsedTime += deltaTime
-	physics_world.box2dWorld.Step(float64(deltaTime), 6, 12)
+
+	timeAccumulation += deltaTime
+	if timeAccumulation > (MAX_FIXED_CYCLES_PER_FRAME * FIXED_UPDATE_INTERVAL) {
+		timeAccumulation = FIXED_UPDATE_INTERVAL
+	}
+
+	for timeAccumulation >= FIXED_UPDATE_INTERVAL {
+		timeAccumulation -= FIXED_UPDATE_INTERVAL
+		// physics_world.box2dWorld.ClearForces()
+		physics_world.cpSpace.Step(float64(1 / 60.0))
+	}
 	return nil
 }
 
@@ -284,8 +320,8 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
 
 	//Shapes.DrawLine(NewVector2f(0.0, 0.0), NewVector2f(2.5, 0.5), RGBA8{255, 255, 0, 255})
-	tempDraw()
 	current_scene.OnDraw()
+	tempDraw(deltaTime)
 	Sprites.Render(&Cam)
 	Shapes.Render(&Cam)
 	UISprites.Render(&uiCam)

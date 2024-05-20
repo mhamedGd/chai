@@ -1,168 +1,49 @@
 package chai
 
 import (
-	"reflect"
+	"github.com/mhamedGd/chai/ecs"
 )
-
-type Id uint32
-
-type BasicStorage struct {
-	list map[*EcsEntity]interface{}
-}
-
-// Copy Paste for new types
-// type TYPE struct {
-// }
-// func (t *TYPE) ComponentSet(val interface{}) { *t = val.(TYPE) }
-
-type Component interface {
-	ComponentSet(interface{})
-}
-
-func NewBasicStorage() *BasicStorage {
-	return &BasicStorage{
-		list: make(map[*EcsEntity]interface{}),
-	}
-}
-
-func (s *BasicStorage) read(entity *EcsEntity) (interface{}, bool) {
-	val, ok := s.list[entity]
-
-	return val, ok
-}
-
-func (s *BasicStorage) write(entity *EcsEntity, val interface{}) {
-	s.list[entity] = val
-}
-
-func (s *BasicStorage) delete(entity *EcsEntity, val interface{}) {
-	delete(s.list, entity)
-}
-
-type EcsEngine struct {
-	reg       map[string]*BasicStorage
-	entities  []*EcsEntity
-	idCounter Id
-}
-
-func NewEcsEngine() EcsEngine {
-	return EcsEngine{
-		reg:       make(map[string]*BasicStorage),
-		entities:  make([]*EcsEntity, 0),
-		idCounter: 0,
-	}
-}
-
-func (e *EcsEngine) NewEntity() EcsEntity {
-	id := e.idCounter
-	e.idCounter++
-	ent := EcsEntity{id: id}
-	e.entities = append(e.entities, &ent)
-	return ent
-}
-
-func (e *EcsEngine) WriteToEntity(index int, ent EcsEntity) {
-	e.entities[index] = &ent
-}
-
-func name(t interface{}) string {
-	name := reflect.TypeOf(t).String()
-	if name[0] == '*' {
-		return name[1:]
-	}
-
-	return name
-}
-
-func GetStorage(e *EcsEngine, t interface{}) *BasicStorage {
-	name := name(t)
-
-	storage, ok := e.reg[name]
-	if !ok {
-		e.reg[name] = NewBasicStorage()
-		storage, _ = e.reg[name]
-	}
-	return storage
-}
-
-func ReadComponent(e *EcsEngine, entity *EcsEntity, val Component) bool {
-	storage := GetStorage(e, val)
-	newVal, ok := storage.read(entity)
-	if ok {
-		val.ComponentSet(newVal)
-	}
-	return ok
-}
-
-func WriteComponent(e *EcsEngine, entity *EcsEntity, val interface{}) {
-	storage := GetStorage(e, val)
-	storage.write(entity, val)
-}
-
-func DeleteComponent(e *EcsEngine, entity *EcsEntity, val interface{}) {
-	storage := GetStorage(e, val)
-	storage.delete(entity, val)
-}
-
-func EachEntity(val interface{}, f func(entity *EcsEntity, a interface{})) {
-	storage := GetStorage(&current_scene.Ecs_engine, val)
-	for entity, a := range storage.list {
-		f(entity, a)
-	}
-}
-
-// If change anything in the entity then call WriteToEntity(index, new entity)
-func EachEntityAll(engine *EcsEngine, f func(entity *EcsEntity, entity_index int)) {
-	// Terrible Solution, Try to connect engine.entities to engine.reg
-	for index, ent := range engine.entities {
-		f(ent, index)
-	}
-	// for _, storage := range engine.reg {
-	// 	for entity := range storage.list {
-	// 		f(entity)
-	// 	}
-	// }
-}
 
 var current_scene *Scene
 
-type EcsEntity struct {
-	id         Id
-	Pos        Vector2f
-	Rot        float32
-	Dimensions Vector2f
-}
+type EntId = ecs.Id
 
 type EcsSystem interface {
 	Update(dt float32)
-	GetEcsEngine() *EcsEngine
 }
 
-type EcsSystemImpl struct {
-	EcsSystem
+func Iterate1[A any](f func(EntId, *A)) {
+	query1 := ecs.Query1[A](GetCurrentScene().Ecs_World)
+	query1.MapId(f)
 }
-
-func (sys *EcsSystemImpl) GetEcsEngine() *EcsEngine {
-	return &current_scene.Ecs_engine
+func Iterate2[A, B any](f func(EntId, *A, *B)) {
+	query2 := ecs.Query2[A, B](GetCurrentScene().Ecs_World)
+	query2.MapId(f)
+}
+func Iterate3[A, B, C any](f func(EntId, *A, *B, *C)) {
+	query3 := ecs.Query3[A, B, C](GetCurrentScene().Ecs_World)
+	query3.MapId(f)
+}
+func Iterate4[A, B, C, D any](f func(EntId, *A, *B, *C, *D)) {
+	query4 := ecs.Query4[A, B, C, D](GetCurrentScene().Ecs_World)
+	query4.MapId(f)
+}
+func Iterate5[A, B, C, D, E any](f func(EntId, *A, *B, *C, *D, *E)) {
+	query4 := ecs.Query5[A, B, C, D, E](GetCurrentScene().Ecs_World)
+	query4.MapId(f)
 }
 
 type Scene struct {
 	Background     RGBA8
-	Ecs_engine     EcsEngine
-	entities       []EcsEntity
+	Ecs_World      *ecs.World
 	update_systems []EcsSystem
 	render_systems []EcsSystem
-	OnSceneStart   func()
-}
-
-func (scene *Scene) GetNumberOfEntities() int {
-	return len(scene.entities)
+	OnSceneStart   func(thisScene *Scene)
 }
 
 func NewScene() Scene {
 	return Scene{
-		Ecs_engine:     NewEcsEngine(),
-		entities:       make([]EcsEntity, 0),
+		Ecs_World:      ecs.NewWorld(),
 		update_systems: make([]EcsSystem, 0),
 		render_systems: make([]EcsSystem, 0),
 	}
@@ -172,39 +53,43 @@ func ChangeScene(scene *Scene) {
 	if current_scene != nil {
 		current_scene.terminateScene()
 	}
+
 	current_scene = scene
-	current_scene.OnSceneStart()
+	go func() {
+		current_scene.OnSceneStart(current_scene)
+	}()
 }
 
 func (scene *Scene) terminateScene() {
-	scene.entities = scene.entities[:0]
+	Iterate1[RigidBodyComponent](func(i ecs.Id, rbc *RigidBodyComponent) {
+		freeRigidbody(rbc)
+	})
 	scene.update_systems = scene.update_systems[:0]
 	scene.render_systems = scene.render_systems[:0]
 
-	for b := GetPhysicsWorld().box2dWorld.GetBodyList(); b != nil; b = b.GetNext() {
-		GetPhysicsWorld().box2dWorld.DestroyBody(b)
-	}
 }
 
-func (scene *Scene) NewEntity(pos Vector2f, dim Vector2f, rot float32) *EcsEntity {
-	ent := scene.Ecs_engine.NewEntity()
-	ent.Pos = pos
-	ent.Rot = rot
-	ent.Dimensions = dim
-	scene.entities = append(scene.entities, ent)
-	return &ent
+func (scene *Scene) NewEntityId() ecs.Id {
+	return scene.Ecs_World.NewId()
 }
 
-func (scene *Scene) GetLastEntity() *EcsEntity {
-	return &scene.entities[len(scene.entities)-1]
+type Component = ecs.Component
+
+func ToComponent[T any](comp T) ecs.Box[T] {
+	return ecs.C(comp)
 }
 
-func (scene *Scene) WriteComponentToLastEntity(component interface{}) {
-	WriteComponent(&scene.Ecs_engine, &scene.entities[len(scene.entities)-1], component)
+func (scene *Scene) AddComponents(EntId ecs.Id, comps ...Component) {
+
+	ecs.Write(scene.Ecs_World, EntId, comps...)
 }
 
-func (scene *Scene) DeleteComponentFromLastEntity(component interface{}) {
-	DeleteComponent(&scene.Ecs_engine, &scene.entities[len(scene.entities)-1], component)
+func GetComponent[T any](scene *Scene, entityId EntId) (T, bool) {
+	return ecs.Read[T](scene.Ecs_World, entityId)
+}
+
+func GetComponentPtr[T any](scene *Scene, entityId EntId) *T {
+	return ecs.ReadPtr[T](scene.Ecs_World, entityId)
 }
 
 func (scene *Scene) NewUpdateSystem(sys EcsSystem) {
@@ -223,7 +108,7 @@ func (scene *Scene) OnUpdate(dt float32) {
 
 func (scene *Scene) OnDraw() {
 	for _, sys := range scene.render_systems {
-		sys.Update(0.0)
+		sys.Update(deltaTime)
 	}
 }
 
@@ -231,93 +116,112 @@ func GetCurrentScene() *Scene {
 	return current_scene
 }
 
+type Transform struct {
+	Position   Vector2f
+	Dimensions Vector2f
+	Rotation   float32
+	Scale      float32
+}
+
 type SpriteComponent struct {
-	Component
 	Texture Texture2D
 	Tint    RGBA8
 }
 
-func (t *SpriteComponent) ComponentSet(val interface{}) { *t = val.(SpriteComponent) }
-
-type SpriteRenderOriginSystem struct {
-	EcsSystemImpl
+type SpriteRenderSystem struct {
+	EcsSystem
 	Sprites *SpriteBatch
 	Offset  Vector2f
 	Scale   float32
 }
 
-func (_render *SpriteRenderOriginSystem) Update(dt float32) {
-	EachEntity(SpriteComponent{}, func(entity *EcsEntity, a interface{}) {
-		sprite := a.(SpriteComponent)
-		halfDim := NewVector2f(_render.Offset.X*float32(sprite.Texture.Width)/2.0, _render.Offset.Y*float32(sprite.Texture.Height)/2.0)
-		_render.Sprites.DrawSpriteOriginScaledRotated(entity.Pos.Add(halfDim), Vector2fZero, Vector2fOne, _render.Scale, &sprite.Texture, sprite.Tint, entity.Rot)
+func (_render *SpriteRenderSystem) Update(dt float32) {
+	query2 := ecs.Query2[Transform, SpriteComponent](GetCurrentScene().Ecs_World)
+	query2.MapId(func(id ecs.Id, t *Transform, s *SpriteComponent) {
+		newOffset := _render.Offset.Rotate(t.Rotation, Vector2fZero)
+		halfDim := NewVector2f(newOffset.X*float32(s.Texture.Width)/2.0, newOffset.Y*float32(s.Texture.Height)/2.0)
+		_render.Sprites.DrawSpriteOriginScaledRotated(t.Position.Add(halfDim), Vector2fZero, Vector2fOne, _render.Scale, &s.Texture, s.Tint, t.Rotation)
 	})
-
 }
 
 type ShapesDrawingSystem struct {
-	EcsSystemImpl
+	EcsSystem
 	Shapes *ShapeBatch
 }
 
 func (sds *ShapesDrawingSystem) Update(dt float32) {
-	EachEntity(LineRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		lineComp := a.(LineRenderComponent)
-		sds.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
+	lineQuery := ecs.Query1[LineRenderComponent](GetCurrentScene().Ecs_World)
+	lineQuery.MapId(func(id ecs.Id, line *LineRenderComponent) {
+		sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
 	})
-	EachEntity(TriangleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		lineComp := a.(TriangleRenderComponent)
-		sds.Shapes.DrawTriangleRotated(entity.Pos, lineComp.Dimensions, WHITE, float32(entity.Rot))
+
+	queryTri := ecs.Query2[Transform, TriangleRenderComponent](GetCurrentScene().Ecs_World)
+	queryTri.MapId(func(id ecs.Id, t *Transform, tri *TriangleRenderComponent) {
+		sds.Shapes.DrawTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
 	})
-	EachEntity(RectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(RectRenderComponent)
-		sds.Shapes.DrawRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+
+	queryFillTri := ecs.Query2[Transform, FillTriangleRenderComponent](GetCurrentScene().Ecs_World)
+	queryFillTri.MapId(func(id ecs.Id, t *Transform, tri *FillTriangleRenderComponent) {
+		sds.Shapes.DrawFillTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
 	})
-	EachEntity(FillRectRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(FillRectRenderComponent)
-		sds.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+
+	queryRect := ecs.Query2[Transform, RectRenderComponent](GetCurrentScene().Ecs_World)
+	queryRect.MapId(func(id ecs.Id, t *Transform, rect *RectRenderComponent) {
+		sds.Shapes.DrawRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
 	})
-	EachEntity(CircleRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		circle := a.(CircleRenderComponent)
-		sds.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, circle.Tint)
+
+	queryFillRect := ecs.Query2[Transform, FillRectRenderComponent](GetCurrentScene().Ecs_World)
+	queryFillRect.MapId(func(id ecs.Id, t *Transform, rect *FillRectRenderComponent) {
+		sds.Shapes.DrawFillRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+	})
+
+	queryFillRectBottom := ecs.Query2[Transform, FillRectBottomRenderComponent](GetCurrentScene().Ecs_World)
+	queryFillRectBottom.MapId(func(id ecs.Id, t *Transform, rect *FillRectBottomRenderComponent) {
+		sds.Shapes.DrawFillRectBottomRotated(t.Position, t.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+	})
+
+	queryCircle := ecs.Query2[Transform, CircleRenderComponent](GetCurrentScene().Ecs_World)
+	queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleRenderComponent) {
+		sds.Shapes.DrawCircle(t.Position, circ.Radius*t.Scale, circ.Tint)
 	})
 }
 
 type LineRenderComponent struct {
-	Component
 	FromPoint Vector2f
 	ToPoint   Vector2f
+	Tint      RGBA8
 }
-
-func (t *LineRenderComponent) ComponentSet(val interface{}) { *t = val.(LineRenderComponent) }
 
 type TriangleRenderComponent struct {
-	Component
-	Dimensions Vector2f
+	Dimensions  Vector2f
+	OffsetPivot Vector2f
+	Tint        RGBA8
 }
 
-func (t *TriangleRenderComponent) ComponentSet(val interface{}) { *t = val.(TriangleRenderComponent) }
+type FillTriangleRenderComponent struct {
+	Dimensions Vector2f
+	Tint       RGBA8
+}
 
 type RectRenderComponent struct {
-	Component
-	Tint RGBA8
+	Dimensions Vector2f
+	Tint       RGBA8
 }
-
-func (t *RectRenderComponent) ComponentSet(val interface{}) { *t = val.(RectRenderComponent) }
 
 type FillRectRenderComponent struct {
-	Component
-	Tint RGBA8
+	Dimensions Vector2f
+	Tint       RGBA8
 }
 
-func (t *FillRectRenderComponent) ComponentSet(val interface{}) { *t = val.(FillRectRenderComponent) }
+type FillRectBottomRenderComponent struct {
+	Dimensions Vector2f
+	Tint       RGBA8
+}
 
 type CircleRenderComponent struct {
-	Component
-	Tint RGBA8
+	Radius float32
+	Tint   RGBA8
 }
-
-func (t *CircleRenderComponent) ComponentSet(val interface{}) { *t = val.(CircleRenderComponent) }
 
 /*
 ###################################################################
@@ -326,82 +230,97 @@ func (t *CircleRenderComponent) ComponentSet(val interface{}) { *t = val.(Circle
 */
 
 type UIShapesDrawingSystem struct {
-	EcsSystemImpl
+	EcsSystem
 	Shapes *ShapeBatch
 }
 
 func (sds *UIShapesDrawingSystem) Update(dt float32) {
-	EachEntity(LineUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		lineComp := a.(LineUIRenderComponent)
-		sds.Shapes.DrawLine(lineComp.FromPoint, lineComp.ToPoint, WHITE)
+
+	lineQuery := ecs.Query1[LineUIRenderComponent](GetCurrentScene().Ecs_World)
+	lineQuery.MapId(func(id ecs.Id, line *LineUIRenderComponent) {
+		sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
 	})
-	EachEntity(TriangleUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		triComp := a.(TriangleUIRenderComponent)
-		sds.Shapes.DrawTriangleRotated(entity.Pos, triComp.Dimensions, triComp.Tint, float32(entity.Rot))
+
+	queryTri := ecs.Query2[Transform, TriangleUIRenderComponent](GetCurrentScene().Ecs_World)
+	queryTri.MapId(func(id ecs.Id, t *Transform, tri *TriangleUIRenderComponent) {
+		sds.Shapes.DrawTriangleRotated(t.Position, tri.Dimensions, tri.Tint, t.Rotation)
 	})
-	EachEntity(RectUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(RectUIRenderComponent)
-		sds.Shapes.DrawRectRotated(entity.Pos, rectComp.Dimensions, rectComp.Tint, entity.Rot)
+
+	queryRect := ecs.Query2[Transform, RectUIRenderComponent](GetCurrentScene().Ecs_World)
+	queryRect.MapId(func(id ecs.Id, t *Transform, rect *RectUIRenderComponent) {
+		sds.Shapes.DrawRectRotated(t.Position, rect.Dimensions, rect.Tint, t.Rotation)
 	})
-	EachEntity(FillRectUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		rectComp := a.(FillRectUIRenderComponent)
-		sds.Shapes.DrawFillRectRotated(entity.Pos, entity.Dimensions, rectComp.Tint, entity.Rot)
+
+	queryFillRect := ecs.Query2[Transform, FillRectUIRenderComponent](GetCurrentScene().Ecs_World)
+	queryFillRect.MapId(func(id ecs.Id, t *Transform, rect *FillRectUIRenderComponent) {
+		sds.Shapes.DrawFillRectRotated(t.Position, rect.Dimensions, rect.Tint, t.Rotation)
 	})
-	EachEntity(CircleUIRenderComponent{}, func(entity *EcsEntity, a interface{}) {
-		circle := a.(CircleUIRenderComponent)
-		sds.Shapes.DrawCircle(entity.Pos, entity.Dimensions.X, circle.Tint)
+
+	queryCircle := ecs.Query2[Transform, CircleUIRenderComponent](GetCurrentScene().Ecs_World)
+	queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleUIRenderComponent) {
+		sds.Shapes.DrawCircle(t.Position, circ.Radius, circ.Tint)
 	})
 }
 
 type LineUIRenderComponent struct {
-	Component
 	FromPoint Vector2f
 	ToPoint   Vector2f
+	Tint      RGBA8
 }
-
-func (t *LineUIRenderComponent) ComponentSet(val interface{}) { *t = val.(LineUIRenderComponent) }
 
 type TriangleUIRenderComponent struct {
-	Component
 	Dimensions Vector2f
 	Tint       RGBA8
-}
-
-func (t *TriangleUIRenderComponent) ComponentSet(val interface{}) {
-	*t = val.(TriangleUIRenderComponent)
 }
 
 type RectUIRenderComponent struct {
-	Component
 	Dimensions Vector2f
 	Tint       RGBA8
 }
-
-func (t *RectUIRenderComponent) ComponentSet(val interface{}) { *t = val.(RectUIRenderComponent) }
-
 type FillRectUIRenderComponent struct {
-	Component
 	Dimensions Vector2f
 	Tint       RGBA8
-}
-
-func (t *FillRectUIRenderComponent) ComponentSet(val interface{}) {
-	*t = val.(FillRectUIRenderComponent)
 }
 
 type CircleUIRenderComponent struct {
-	Component
-	Tint RGBA8
-}
-
-func (t *CircleUIRenderComponent) ComponentSet(val interface{}) { *t = val.(CircleUIRenderComponent) }
-
-type CircleUIRenderSystem struct {
-	EcsSystemImpl
-	Shapes *ShapeBatch
+	Radius float32
+	Tint   RGBA8
 }
 
 /*
 ###################################################################
 ###################################################################
 */
+
+type FontRenderSystem struct {
+	EcsSystem
+	fontbatch_atlas FontBatchAtlas
+	FontSettings    FontBatchSettings
+}
+
+func (frs *FontRenderSystem) SetFont(fontPath string) {
+	frs.fontbatch_atlas = LoadFontToAtlas(fontPath, &frs.FontSettings)
+}
+
+func (frs *FontRenderSystem) SetFontBatchRenderer(sb *SpriteBatch) {
+	frs.fontbatch_atlas.sPatch = sb
+}
+
+// func (frs *FontRenderSystem) SetFont(_font *FontBatchAtlas) {
+// 	frs.fontbatch_atlas = _font
+// }
+
+type FontRenderComponent struct {
+	Text   string
+	Scale  float32
+	Offset Vector2f
+	Tint   RGBA8
+}
+
+func (frs *FontRenderSystem) Update(dt float32) {
+	Iterate2[Transform, FontRenderComponent](func(i ecs.Id, t *Transform, frc *FontRenderComponent) {
+		frs.fontbatch_atlas.DrawString(frc.Text, t.Position.Add(frc.Offset), frc.Scale, frc.Tint)
+	})
+
+	//frs.fontbatch_atlas.Render()
+}
