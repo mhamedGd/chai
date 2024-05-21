@@ -1,0 +1,186 @@
+
+
+:root {
+    --dpad-spacing-pos:  45px;
+    --dpad-spacing-neg: -45px;
+
+    --dpad-width: 40px;
+    --dpad-height : 55px;
+
+    --button-offest-pos : 30px;
+    --button-offest-neg : -30px;
+
+    --main-button-size: 70px;
+    --side-button-size: 50px;
+}
+
+body{
+    background-color: black;
+    margin: 0;
+    overflow: hidden;
+}
+#canvas-container{
+    display: flex;
+    width: 100vw;
+    height: 80vh;
+    margin-top: 0;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.play-button {
+    background: none;
+    padding: 4px 24px;
+
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 16px;
+    z-index: 10;
+    transform: translate(-50%, -50%);
+    color: white;
+}
+
+.play-button-container {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+}
+
+#viewport {
+    display: grid;
+    justify-content: center;
+    align-items: center;
+    width: 90vw;
+}
+
+.debug-console-container {
+    position: absolute;
+    width: 40vw;
+    height: 30vh;
+    outline: 1px solid black;
+    overflow: scroll;
+    top: 0;
+    --mask-image-content: linear-gradient(
+        to bottom,
+        transparent,
+        black 0,
+        black 90%,
+        transparent
+    );
+    mask-image: linear-gradient(to bottom, transparent, black 0, black calc(100% - 100px), transparent);
+}
+
+.debug-console {
+    padding-left: 12px;
+    line-height: 24px;
+    display: flex;
+    flex-direction: column-reverse;
+    margin-top: 5px;
+}
+
+.debug-line {
+    margin-top: 0;
+}
+
+.mobile-controller {
+    position: absolute;
+    top: 75%;
+    display: flex;
+    width: 100vw;
+    height: 120px;
+    justify-content: space-around;
+}
+
+.controller-set {
+    display: flex;
+    width: 100px;
+    height: 100px;
+    justify-content: center;
+    align-items: center;
+}
+
+.dpad {
+    background: #d1d1d1;
+    position: absolute;
+    text-align: center;
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.1s;
+}
+
+.dpad:active {
+    background: #787878;
+}
+
+.button {
+    background: #d1d1d1;
+    position: absolute;
+    text-align: center;
+    border-radius: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.1s;
+}
+
+
+.button:active {
+    background: #787878;
+}
+
+.up {
+    width: var(--dpad-width);
+    height: var(--dpad-height);
+
+    transform: translate(0, var(--dpad-spacing-neg));
+}
+.down {
+    width: var(--dpad-width);
+    height: var(--dpad-height);
+    transform: translate(0, var(--dpad-spacing-pos));
+}
+.left {
+    width: var(--dpad-height);
+    height: var(--dpad-width);
+    transform: translate(var(--dpad-spacing-neg), 0);
+}
+.right {
+    width: var(--dpad-height);
+    height: var(--dpad-width);
+    transform: translate(var(--dpad-spacing-pos), 0);
+}
+
+.main-button {
+    width: var(--main-button-size);
+    height: var(--main-button-size);
+    transform: translate(var(--button-offest-neg), var(--button-offest-pos));
+}
+
+.side-button {
+    width: var(--side-button-size);
+    height: var(--side-button-size);
+    transform: translate(var(--button-offest-pos), var(--button-offest-neg));
+}
+
+@media screen and (min-width: 480px) {
+    #canvas-container{
+        width: 100vw;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #viewport {
+        width: 50vw;
+    }
+
+    .mobile-controller {
+        display: none;
+    }
+}
