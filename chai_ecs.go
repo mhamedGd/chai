@@ -1,7 +1,7 @@
 package chai
 
 import (
-	"github.com/mhamedGd/chai/Chai/ecs"
+	"github.com/mhamedGd/chai/ecs"
 )
 
 var current_scene *Scene
