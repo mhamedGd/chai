@@ -21,7 +21,7 @@ Written in ***GO***
 
 ## Building the framework
 
-**Checkout** the [Example](https://github.com/mhamedGd/chai_examples) file to see how to set up a Chai Project
+**Checkout** the [Example](https://github.com/mhamedGd/chai_examples) repo to see how to set up a Chai Project
 
 <br><br>
 
