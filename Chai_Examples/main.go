@@ -1,7 +1,7 @@
 package main
 
 import (
-	chai "github.com/mhamedGd/chai"
+	chai "github.com/mhamedGd/chai/Chai"
 )
 
 var game chai.App

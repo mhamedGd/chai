@@ -1,4 +1,4 @@
-module github.com/mhamedGd/chai
+module github.com/mhamedGd/chai/Chai
 
 go 1.22.1
 

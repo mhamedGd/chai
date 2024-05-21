@@ -2,7 +2,7 @@ package chai
 
 import (
 	cp "github.com/jakecoffman/cp/v2"
-	"github.com/mhamedGd/chai/ecs"
+	"github.com/mhamedGd/chai/Chai/ecs"
 )
 
 type PhysicsBodyType uint8
