@@ -3,6 +3,8 @@ package chai
 import (
 	"fmt"
 	"math"
+	"math/rand"
+	"unsafe"
 )
 
 const (
@@ -10,6 +12,10 @@ const (
 	Rad2Deg = 180.0 / PI
 	Deg2Rad = 1 / Rad2Deg
 )
+
+func RandomRangeFloat32(_min, _max float32) float32 {
+	return rand.Float32()*(_max-_min) + _min
+}
 
 /*
 ###################################################################################
@@ -33,6 +39,11 @@ func ClampFloat64(_value float64, _min float64, _max float64) float64 {
 	}
 
 	return _value
+}
+
+func ClampInt(_value, _min, _max int) int {
+	_value = ((_value - _min) & -(BoolToInt(_value >= _min))) + _min
+	return ((_value - _max) & -(BoolToInt(_value <= _max))) + _max
 }
 
 /*
@@ -88,19 +99,15 @@ func Uint8ToFloat1(_inp uint8) float32 {
 */
 
 func BoolToFloat64(_boolean bool) float64 {
-	if _boolean {
-		return 1.0
-	}
-
-	return 0.0
+	return float64(*(*byte)(unsafe.Pointer(&_boolean)))
 }
 
 func BoolToFloat32(_boolean bool) float32 {
-	if _boolean {
-		return 1.0
-	}
+	return float32(*(*byte)(unsafe.Pointer(&_boolean)))
+}
 
-	return 0.0
+func BoolToInt(_boolean bool) int {
+	return int(*(*byte)(unsafe.Pointer(&_boolean)))
 }
 
 /*
@@ -272,7 +279,7 @@ func (v1 Vector2f) NearlyEqual(v2 Vector2f) bool {
 	var factor float32 = 0.001
 
 	diff := v1.Subtract(v2)
-	diff = AbsVector2f(&diff)
+	diff = AbsVector2f(diff)
 
 	if diff.X <= factor && diff.Y <= factor {
 		return true
@@ -312,7 +319,7 @@ func (v Vector2f) Scale(_value float32) Vector2f {
 	return Vector2f{X: v.X * _value, Y: v.Y * _value}
 }
 
-func AbsVector2f(_v *Vector2f) Vector2f {
+func AbsVector2f(_v Vector2f) Vector2f {
 	return Vector2f{
 		AbsFloat32(_v.X), AbsFloat32(_v.Y),
 	}
@@ -378,6 +385,18 @@ func Vector2fMidpoint(v1, v2 Vector2f) Vector2f {
 
 func (v Vector2f) ToString() string {
 	return fmt.Sprint(v.X, v.Y)
+}
+
+func RandVector2f() Vector2f {
+	v := NewVector2f(0.0, 0.0)
+	v.X = rand.Float32()*(1.0 - -1.0) + -1.0
+	v.Y = rand.Float32()*(1.0 - -1.0) + -1.0
+
+	return v
+}
+
+func RandPosVector2f() Vector2f {
+	return NewVector2f(rand.Float32(), rand.Float32())
 }
 
 type Vector2i struct {

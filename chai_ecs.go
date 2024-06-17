@@ -39,6 +39,7 @@ type Scene struct {
 	update_systems []EcsSystem
 	render_systems []EcsSystem
 	OnSceneStart   func(thisScene *Scene)
+	OnSceneUpdate  func(dt float32, thisScene *Scene)
 }
 
 func NewScene() Scene {
@@ -46,6 +47,8 @@ func NewScene() Scene {
 		Ecs_World:      ecs.NewWorld(),
 		update_systems: make([]EcsSystem, 0),
 		render_systems: make([]EcsSystem, 0),
+		OnSceneStart:   func(thisScene *Scene) {},
+		OnSceneUpdate:  func(dt float32, thisScene *Scene) {},
 	}
 }
 
@@ -80,7 +83,6 @@ func ToComponent[T any](comp T) ecs.Box[T] {
 }
 
 func (scene *Scene) AddComponents(EntId ecs.Id, comps ...Component) {
-
 	ecs.Write(scene.Ecs_World, EntId, comps...)
 }
 
@@ -98,6 +100,10 @@ func (scene *Scene) NewUpdateSystem(sys EcsSystem) {
 
 func (scene *Scene) NewRenderSystem(sys EcsSystem) {
 	scene.render_systems = append(scene.render_systems, sys)
+}
+
+func (scene *Scene) SetGravity(new_gravity Vector2f) {
+	physics_world.cpSpace.SetGravity(cpVector2f(new_gravity))
 }
 
 func (scene *Scene) OnUpdate(dt float32) {
@@ -152,37 +158,53 @@ type ShapesDrawingSystem struct {
 func (sds *ShapesDrawingSystem) Update(dt float32) {
 	lineQuery := ecs.Query1[LineRenderComponent](GetCurrentScene().Ecs_World)
 	lineQuery.MapId(func(id ecs.Id, line *LineRenderComponent) {
-		sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
+		if Cam.IsBoxInView(line.FromPoint, AbsVector2f(line.ToPoint.Subtract(line.FromPoint))) {
+			sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
+		}
 	})
 
 	queryTri := ecs.Query2[Transform, TriangleRenderComponent](GetCurrentScene().Ecs_World)
 	queryTri.MapId(func(id ecs.Id, t *Transform, tri *TriangleRenderComponent) {
-		sds.Shapes.DrawTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+		if Cam.IsBoxInView(t.Position, tri.Dimensions.Scale(t.Scale)) {
+			sds.Shapes.DrawTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+		}
 	})
 
 	queryFillTri := ecs.Query2[Transform, FillTriangleRenderComponent](GetCurrentScene().Ecs_World)
 	queryFillTri.MapId(func(id ecs.Id, t *Transform, tri *FillTriangleRenderComponent) {
-		sds.Shapes.DrawFillTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+		if Cam.IsBoxInView(t.Position, tri.Dimensions.Scale(t.Scale)) {
+			sds.Shapes.DrawFillTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+		}
 	})
 
 	queryRect := ecs.Query2[Transform, RectRenderComponent](GetCurrentScene().Ecs_World)
 	queryRect.MapId(func(id ecs.Id, t *Transform, rect *RectRenderComponent) {
-		sds.Shapes.DrawRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+		if Cam.IsBoxInView(t.Position, rect.Dimensions.Scale(t.Scale)) {
+			sds.Shapes.DrawRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+		}
 	})
-
-	queryFillRect := ecs.Query2[Transform, FillRectRenderComponent](GetCurrentScene().Ecs_World)
-	queryFillRect.MapId(func(id ecs.Id, t *Transform, rect *FillRectRenderComponent) {
-		sds.Shapes.DrawFillRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
-	})
+	// go func() {
+	// 	queryFillRect := ecs.Query2[Transform, FillRectRenderComponent](GetCurrentScene().Ecs_World)
+	// 	queryFillRect.MapId(func(id ecs.Id, t *Transform, rect *FillRectRenderComponent) {
+	// 		if Cam.IsBoxInView(t.Position, t.Dimensions.Scale(t.Scale)) {
+	// 			sds.Shapes.DrawFillRectRotated(t.Position, t.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+	// 		}
+	// 	})
+	// }()
 
 	queryFillRectBottom := ecs.Query2[Transform, FillRectBottomRenderComponent](GetCurrentScene().Ecs_World)
 	queryFillRectBottom.MapId(func(id ecs.Id, t *Transform, rect *FillRectBottomRenderComponent) {
-		sds.Shapes.DrawFillRectBottomRotated(t.Position, t.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+		rectDims := rect.Dimensions.Scale(t.Scale)
+		if Cam.IsBoxInView(t.Position.Subtract(rectDims.Scale(0.5)), rectDims) {
+			sds.Shapes.DrawFillRectBottomRotated(t.Position, rectDims, rect.Tint, t.Rotation)
+		}
 	})
 
 	queryCircle := ecs.Query2[Transform, CircleRenderComponent](GetCurrentScene().Ecs_World)
 	queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleRenderComponent) {
-		sds.Shapes.DrawCircle(t.Position, circ.Radius*t.Scale, circ.Tint)
+		if Cam.IsBoxInView(t.Position, NewVector2f(circ.Radius*t.Scale, circ.Radius*t.Scale)) {
+			sds.Shapes.DrawCircle(t.Position, circ.Radius*t.Scale, circ.Tint)
+		}
 	})
 }
 
@@ -209,8 +231,7 @@ type RectRenderComponent struct {
 }
 
 type FillRectRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
+	Tint RGBA8
 }
 
 type FillRectBottomRenderComponent struct {
@@ -219,70 +240,6 @@ type FillRectBottomRenderComponent struct {
 }
 
 type CircleRenderComponent struct {
-	Radius float32
-	Tint   RGBA8
-}
-
-/*
-###################################################################
-################# UI UI UI UI UI UI UI UI UI UI UI ################
-###################################################################
-*/
-
-type UIShapesDrawingSystem struct {
-	EcsSystem
-	Shapes *ShapeBatch
-}
-
-func (sds *UIShapesDrawingSystem) Update(dt float32) {
-
-	lineQuery := ecs.Query1[LineUIRenderComponent](GetCurrentScene().Ecs_World)
-	lineQuery.MapId(func(id ecs.Id, line *LineUIRenderComponent) {
-		sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
-	})
-
-	queryTri := ecs.Query2[Transform, TriangleUIRenderComponent](GetCurrentScene().Ecs_World)
-	queryTri.MapId(func(id ecs.Id, t *Transform, tri *TriangleUIRenderComponent) {
-		sds.Shapes.DrawTriangleRotated(t.Position, tri.Dimensions, tri.Tint, t.Rotation)
-	})
-
-	queryRect := ecs.Query2[Transform, RectUIRenderComponent](GetCurrentScene().Ecs_World)
-	queryRect.MapId(func(id ecs.Id, t *Transform, rect *RectUIRenderComponent) {
-		sds.Shapes.DrawRectRotated(t.Position, rect.Dimensions, rect.Tint, t.Rotation)
-	})
-
-	queryFillRect := ecs.Query2[Transform, FillRectUIRenderComponent](GetCurrentScene().Ecs_World)
-	queryFillRect.MapId(func(id ecs.Id, t *Transform, rect *FillRectUIRenderComponent) {
-		sds.Shapes.DrawFillRectRotated(t.Position, rect.Dimensions, rect.Tint, t.Rotation)
-	})
-
-	queryCircle := ecs.Query2[Transform, CircleUIRenderComponent](GetCurrentScene().Ecs_World)
-	queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleUIRenderComponent) {
-		sds.Shapes.DrawCircle(t.Position, circ.Radius, circ.Tint)
-	})
-}
-
-type LineUIRenderComponent struct {
-	FromPoint Vector2f
-	ToPoint   Vector2f
-	Tint      RGBA8
-}
-
-type TriangleUIRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
-}
-
-type RectUIRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
-}
-type FillRectUIRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
-}
-
-type CircleUIRenderComponent struct {
 	Radius float32
 	Tint   RGBA8
 }
@@ -321,6 +278,4 @@ func (frs *FontRenderSystem) Update(dt float32) {
 	Iterate2[Transform, FontRenderComponent](func(i ecs.Id, t *Transform, frc *FontRenderComponent) {
 		frs.fontbatch_atlas.DrawString(frc.Text, t.Position.Add(frc.Offset), frc.Scale, frc.Tint)
 	})
-
-	//frs.fontbatch_atlas.Render()
 }

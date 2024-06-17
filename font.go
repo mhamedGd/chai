@@ -310,7 +310,7 @@ func (self *FontBatchAtlas) Init() {
 		self.sPatch = &SpriteBatch{}
 		self.sPatch.Init("font.shader")
 	}
-	// self.sPatch = Sprites
+	self.sPatch = &UISprites
 
 }
 
@@ -657,16 +657,20 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 
 	for _, v := range _text {
 		charglyph, ok := self.charAtlasSet[v]
-		if !ok {
-			continue
-		}
+
 		if v == ' ' {
 			originalPos.X += charglyph.advance * _scale
 			continue
-		} else if v == '\n' {
+		} else if v == '\n' || int(v) == 10 {
 			originalPos.X = _position.X
-			originalPos.Y += self.fontSettings.LineHeight
+			originalPos.Y -= self.fontSettings.LineHeight
+			continue
 		}
+
+		if !ok {
+			continue
+		}
+
 		loc_pos := originalPos
 		loc_pos.Y += (charglyph.bearing.Y) * _scale
 		self.sPatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
@@ -709,5 +713,5 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 }
 
 func (self *FontBatchAtlas) Render() {
-	self.sPatch.Render(&Cam)
+	self.sPatch.Render()
 }

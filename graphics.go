@@ -131,14 +131,15 @@ func NewVertex(_coords, _uv Vector2f, _color RGBA8) Vertex {
 const vertexByteSize uintptr = unsafe.Sizeof(Vertex{})
 
 type ShapeBatch struct {
-	vao              js.Value
-	vbo, ibo         js.Value
-	Vertices         []Vertex
-	Indices          []int32
-	NumberOfElements int
-	Shader           ShaderProgram
-	LineWidth        float32
-	Initialized      bool
+	vao               js.Value
+	vbo, ibo          js.Value
+	Vertices          []Vertex
+	Indices           []int32
+	NumberOfElements  int
+	NumberOfInstances int
+	Shader            ShaderProgram
+	LineWidth         float32
+	Initialized       bool
 }
 
 type Gfx_Shape = int
@@ -209,6 +210,8 @@ func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+
+	_sp.NumberOfInstances++
 }
 
 func (_sp *ShapeBatch) DrawRect(_center, _dimensions Vector2f, _color RGBA8) {
@@ -277,6 +280,7 @@ func (_sp *ShapeBatch) DrawFillTriangle(_center, _dimensions Vector2f, _color RG
 	_sp.Indices = append(_sp.Indices, int32(vertsSize))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
@@ -328,6 +332,8 @@ func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8)
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.NumberOfInstances++
+
 }
 
 func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color RGBA8) {
@@ -345,6 +351,8 @@ func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color 
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.NumberOfInstances++
+
 }
 
 func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
@@ -362,6 +370,8 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.NumberOfInstances++
+
 }
 
 func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom, _dimensions Vector2f, _color RGBA8, _rotation float32) {
@@ -384,6 +394,8 @@ func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom, _dimensions Vector2f, 
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.NumberOfInstances++
+
 }
 
 func (_sp *ShapeBatch) finalize() {
@@ -449,6 +461,8 @@ func (_sp *ShapeBatch) Render(cam *Camera2D) {
 	canvasContext.Call("bindVertexArray", _sp.vao)
 
 	canvasContext.Call("drawElements", canvasContext.Get("TRIANGLES"), _sp.NumberOfElements, canvasContext.Get("UNSIGNED_INT"), 0)
+	// canvasContext.Call("drawElementsInstanced", canvasContext.Get("TRIANGLES"), 6, canvasContext.Get("UNSIGNED_INT"), 0, _sp.NumberOfInstances)
+	_sp.NumberOfInstances = 0
 	UnuseShader()
 }
 
@@ -538,12 +552,12 @@ func NewSpriteGlyphRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Tex
 }
 
 type RenderBatch struct {
-	offset, numberOfVertices int
-	texture                  *Texture2D
+	offset, numberOfVertices, numOfInstances int
+	texture                                  *Texture2D
 }
 
-func NewRenderBatch(_offset, _numberOfVertices int, _texture *Texture2D) RenderBatch {
-	return RenderBatch{_offset, _numberOfVertices, _texture}
+func NewRenderBatch(_offset, _numberOfVertices, _numOfInstances int, _texture *Texture2D) RenderBatch {
+	return RenderBatch{_offset, _numberOfVertices, _numOfInstances, _texture}
 }
 
 type SpriteBatch struct {
@@ -554,6 +568,8 @@ type SpriteBatch struct {
 
 	renderBatches []RenderBatch
 	spriteGlyphs  []SpriteGlyph
+
+	RenderCam *Camera2D
 }
 
 func (self *SpriteBatch) Reset() {
@@ -628,7 +644,10 @@ func (self *SpriteBatch) DrawSpriteOriginRotated(_center, _uv1, _uv2 Vector2f, _
 }
 
 func (self *SpriteBatch) DrawSpriteOriginScaledRotated(_center, _uv1, _uv2 Vector2f, _scale float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale), _uv1, _uv2, _texture, _tint, _rotation))
+	_spriteDims := NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale)
+	if self.RenderCam.IsBoxInView(_center, _spriteDims) {
+		self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, _spriteDims, _uv1, _uv2, _texture, _tint, _rotation))
+	}
 }
 
 func (self *SpriteBatch) finalize() {
@@ -636,12 +655,12 @@ func (self *SpriteBatch) finalize() {
 
 }
 
-func (self *SpriteBatch) Render(cam *Camera2D) {
+func (self *SpriteBatch) Render() {
 	self.finalize()
 
 	UseShader(&self.shader)
 
-	viewMatrix := cam.viewMatrix.Data()
+	viewMatrix := self.RenderCam.viewMatrix.Data()
 
 	viewBuffer := new(bytes.Buffer)
 	{
@@ -669,6 +688,7 @@ func (self *SpriteBatch) Render(cam *Camera2D) {
 	for i := 0; i < len(self.renderBatches); i++ {
 		canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), self.renderBatches[i].texture.textureId)
 		canvasContext.Call("drawArrays", canvasContext.Get("TRIANGLES"), self.renderBatches[i].offset, self.renderBatches[i].numberOfVertices)
+		// canvasContext.Call("drawArraysInstanced", canvasContext.Get("TRIANGLES"), self.renderBatches[i].offset, self.renderBatches[i].numberOfVertices, self.renderBatches[i].numOfInstances)
 	}
 	canvasContext.Call("bindVertexArray", js.Null())
 
@@ -686,7 +706,7 @@ func (self *SpriteBatch) createRenderBatches() {
 	offset := 0
 	vertexNum := 0
 
-	self.renderBatches = append(self.renderBatches, NewRenderBatch(offset, 6, self.spriteGlyphs[0].texture))
+	self.renderBatches = append(self.renderBatches, NewRenderBatch(offset, 6, 1, self.spriteGlyphs[0].texture))
 	vertices[vertexNum] = self.spriteGlyphs[0].bottomleft
 	vertexNum++
 	vertices[vertexNum] = self.spriteGlyphs[0].topright
@@ -703,7 +723,7 @@ func (self *SpriteBatch) createRenderBatches() {
 
 	for i := 1; i < len(self.spriteGlyphs); i++ {
 		if !self.spriteGlyphs[i-1].texture.textureId.Equal(self.spriteGlyphs[i].texture.textureId) {
-			self.renderBatches = append(self.renderBatches, NewRenderBatch(offset, 6, self.spriteGlyphs[i].texture))
+			self.renderBatches = append(self.renderBatches, NewRenderBatch(offset, 6, 1, self.spriteGlyphs[i].texture))
 		} else {
 			self.renderBatches[len(self.renderBatches)-1].numberOfVertices += 6
 		}
@@ -721,6 +741,7 @@ func (self *SpriteBatch) createRenderBatches() {
 		vertices[vertexNum] = self.spriteGlyphs[i].topleft
 		vertexNum++
 		offset += 6
+		self.renderBatches[len(self.renderBatches)-1].numOfInstances += 1
 	}
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), self.vbo)
 
@@ -730,4 +751,49 @@ func (self *SpriteBatch) createRenderBatches() {
 
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
 
+}
+
+type renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32)
+
+var (
+	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+		sh.DrawFillRectRotated(v1, v2, c, r)
+	}
+	TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+		sh.DrawFillTriangleRotated(v1, v2, c, r)
+	}
+	CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+		sh.DrawCircle(v1, v2.X, c)
+	}
+	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+		sh.DrawLine(v1, v2, c)
+	}
+)
+
+type RenderObject struct {
+	entId      EntId
+	objectType renderObjectFuncType
+	tint       RGBA8
+}
+
+func newRenderObject(entId EntId, _tint RGBA8, _objectType renderObjectFuncType) RenderObject {
+	return RenderObject{
+		entId:      entId,
+		objectType: _objectType,
+		tint:       _tint,
+	}
+}
+
+func NewQuadComponent(thisScene *Scene, entId EntId, tint RGBA8) FillRectRenderComponent {
+	renderObj := newRenderObject(entId, tint, QUAD_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[Transform](thisScene, entId)
+	RenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	return FillRectRenderComponent{
+		Tint: tint,
+	}
+}
+
+func Compare(v1, v2 RenderObject) bool {
+	return v1.entId == v2.entId && v1.tint == v2.tint
 }

@@ -8,3 +8,5 @@ require (
 	golang.org/x/image v0.15.0
 	golang.org/x/text v0.14.0
 )
+
+require github.com/google/go-cmp v0.6.0 // indirect

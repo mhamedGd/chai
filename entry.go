@@ -5,7 +5,6 @@ import (
 	"syscall/js"
 )
 
-var running bool
 var app_url string
 
 type App struct {
@@ -19,7 +18,6 @@ type App struct {
 }
 
 // Used to make the update function only available in the local App struct, to the whole file
-var tempStart func()
 var tempUpdate func(float32)
 var tempDraw func(float32)
 
@@ -57,8 +55,10 @@ var UISprites SpriteBatch
 var started bool = false
 
 var physics_world PhysicsWorld
+var RenderQuadTreeContainer StaticQuadTreeContainer[RenderObject]
 
 var MouseCanvasPos Vector2f
+var TouchCanvasPos [2]Vector2f
 var canvasBoundingClientRect js.Value
 
 var mousePressed MouseButton
@@ -67,6 +67,10 @@ var LeftMouseJustPressed ChaiEvent[int]
 
 func GetPhysicsWorld() *PhysicsWorld {
 	return &physics_world
+}
+
+func GetDeltaTime() float32 {
+	return deltaTime
 }
 
 func (_app *App) fillDefaults() {
@@ -93,7 +97,6 @@ func (_app *App) fillDefaults() {
 }
 
 func Run(_app *App) {
-	running = true
 
 	// defer func() {
 	// 	if r := recover(); r != nil {
@@ -122,7 +125,6 @@ func Run(_app *App) {
 	canvasContext.Call("blendFunc", canvasContext.Get("ONE"), canvasContext.Get("ONE_MINUS_SRC_ALPHA"), canvasContext.Get("ONE"), canvasContext.Get("ONE"))
 	canvasContext.Call("enable", canvasContext.Get("BLEND"))
 
-	tempStart = _app.OnStart
 	tempUpdate = _app.OnUpdate
 	tempDraw = _app.OnDraw
 
@@ -148,12 +150,13 @@ func Run(_app *App) {
 		return 0
 	}))
 
+	TouchCanvasPos[0] = NewVector2f(0.0, 0.0)
+	TouchCanvasPos[1] = NewVector2f(0.0, 0.0)
+
 	initTextures()
 	InitInputs()
 	physics_world = newPhysicsWorld(NewVector2f(0.0, -200.0))
-	// physics_world.box2dWorld.SetContactListener(worldContactListener)
 
-	//js.Global().Set("js_start", js.FuncOf(JSStart))
 	js.Global().Set("js_update", js.FuncOf(JSUpdate))
 	js.Global().Set("js_draw", js.FuncOf(JSDraw))
 
@@ -163,8 +166,10 @@ func Run(_app *App) {
 	Cam.Update(*_app)
 
 	uiCam.Init(*_app)
-	//uiCam.position.AddXY(-float32(appRef.Width)/2.0, -float32(appRef.Height)/2.0)
 	uiCam.Update(*_app)
+
+	RenderQuadTreeContainer = NewStaticQuadTreeContainer[RenderObject]()
+	RenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(1000.0, 1000.0)})
 
 	Shapes.Init()
 	Assert(Shapes.Initialized, "Shapes Rendering was not initialized successfully")
@@ -173,6 +178,8 @@ func Run(_app *App) {
 
 	Sprites.Init("")
 	UISprites.Init("")
+	Sprites.RenderCam = &Cam
+	UISprites.RenderCam = &uiCam
 
 	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 
@@ -243,7 +250,6 @@ func Run(_app *App) {
 	/*
 		////////// FINAL CHECKS ////////////
 	*/
-
 	//custom_func("STRING") ------- (1)
 	_app.OnStart()
 	Assert(current_scene != nil, "Current Scene is none")
@@ -263,11 +269,6 @@ func Run(_app *App) {
 --------- (2)
 */
 
-//	func JSStart(this js.Value, inputs []js.Value) interface{} {
-//		tempStart()
-//		return nil
-//	}
-
 var ElapsedTime float32
 var deltaTime float32
 
@@ -282,7 +283,6 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
-	// LogF("Canvas Size: %v", GetCurrentCanvasPageSize())
 
 	deltaTime = float32(inputs[0].Float())
 	if deltaTime > CAP_DELTA_TIME {
@@ -291,10 +291,18 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
+	current_scene.OnSceneUpdate(deltaTime, current_scene)
 	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
 	uiCam.Update(*appRef)
+
+	for _, v := range RenderQuadTreeContainer.allItems.AllItems() {
+		t := GetComponentPtr[Transform](current_scene, v.item.entId)
+		RenderQuadTreeContainer.Relocate(&v, Rect{t.Position, t.Dimensions})
+	}
+	// LogF("%v", RenderQuadTreeContainer.allItems.Count())
+
 	tempUpdate(deltaTime)
 	ElapsedTime += deltaTime
 
@@ -305,7 +313,6 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 
 	for timeAccumulation >= FIXED_UPDATE_INTERVAL {
 		timeAccumulation -= FIXED_UPDATE_INTERVAL
-		// physics_world.box2dWorld.ClearForces()
 		physics_world.cpSpace.Step(float64(1 / 60.0))
 	}
 	return nil
@@ -319,17 +326,47 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	setBackgroundColor(current_scene.Background)
 	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
 
-	//Shapes.DrawLine(NewVector2f(0.0, 0.0), NewVector2f(2.5, 0.5), RGBA8{255, 255, 0, 255})
 	current_scene.OnDraw()
+	ScreenDims := NewVector2f(float32(appRef.Width), float32(appRef.Height))
+	RenderQuadTreeContainer.QuadsCount = 0
+	quadsInView := RenderQuadTreeContainer.Search(Rect{Position: ScreenDims.Scale(-0.5).Scale(1 / Cam.GetScale()).Add(Cam.GetPosition()), Size: ScreenDims.Scale(1 / Cam.GetScale())})
+
+	for _, v := range quadsInView.AllItems() {
+		// chai.Shapes.DrawFillRect(v.First.Position, v.First.Dimensions, v.Second.Tint)
+		// rects_count++
+		it := v.item
+		t := GetComponentPtr[Transform](current_scene, it.entId)
+
+		// v.objectType(&Shapes, t.Position, t.Dimensions, v.tint, t.Rotation)
+		// Shapes.DrawFillRectRotated(t.Position, t.Dimensions, it.tint, t.Rotation)
+		v.item.objectType(&Shapes, t.Position, t.Dimensions, v.item.tint, t.Rotation)
+		RenderQuadTreeContainer.QuadsCount++
+
+	}
+
 	tempDraw(deltaTime)
-	Sprites.Render(&Cam)
 	Shapes.Render(&Cam)
-	UISprites.Render(&uiCam)
+	Sprites.Render()
 	UIShapes.Render(&uiCam)
+	UISprites.Render()
 	return nil
 }
 
 func setBackgroundColor(_color RGBA8) {
 	canvasContext.Call("clearColor", _color.GetColorRFloat32(), _color.GetColorGFloat32(), _color.GetColorBFloat32(), 1.0)
 
+}
+
+func NumOfQuadsInView() int {
+	return RenderQuadTreeContainer.QuadsInViewCount()
+}
+
+// func GetAllQuadsInView() []*renderObject {
+// 	ScreenDims := NewVector2f(float32(appRef.Width), float32(appRef.Height))
+// 	return RenderQuadTreeContainer.Search(Rect{Position: ScreenDims.Scale(-0.5).Scale(1 / Cam.GetScale()).Add(Cam.GetPosition()), Size: ScreenDims.Scale(1 / Cam.GetScale())})
+// }
+
+func GetQuadsInRect(rArea Rect) List[*QuadTreeItem[RenderObject]] {
+	list := RenderQuadTreeContainer.Search(rArea)
+	return list
 }

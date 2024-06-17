@@ -57,6 +57,24 @@ func (cam *Camera2D) GetPosition() Vector2f {
 	return cam.position
 }
 
+func (cam *Camera2D) GetScale() float32 {
+	return cam.scale
+}
+
+func (cam *Camera2D) IsBoxInView(pos, dim Vector2f) bool {
+	scaledScreenDimensions := NewVector2f(float32(GetCanvasWidth()), float32(GetCanvasHeigth())).Scale(1 / (cam.scale))
+
+	MIN_DISTANCE_X := dim.X/0.5 + scaledScreenDimensions.X/2.0
+	MIN_DISTANCE_Y := dim.Y/0.5 + scaledScreenDimensions.Y/2.0
+
+	distVector := (pos.Add(dim)).Subtract(cam.position)
+
+	xDepth := MIN_DISTANCE_X - AbsFloat32(distVector.X)
+	yDepth := MIN_DISTANCE_Y - AbsFloat32(distVector.Y)
+
+	return xDepth > 0 && yDepth > 0
+}
+
 func Scale(s float32) goglmath.Matrix4 {
 	matrix := goglmath.NewMatrix4Identity()
 	matrix.Scale(float64(s), float64(s), 0, 1)
