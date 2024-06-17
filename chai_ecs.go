@@ -67,14 +67,31 @@ func (scene *Scene) terminateScene() {
 	Iterate1[RigidBodyComponent](func(i ecs.Id, rbc *RigidBodyComponent) {
 		freeRigidbody(rbc)
 	})
+	// scene.transforms.Clear()
 	scene.update_systems = scene.update_systems[:0]
 	scene.render_systems = scene.render_systems[:0]
 
 }
 
 func (scene *Scene) NewEntityId() ecs.Id {
-	return scene.Ecs_World.NewId()
+	id := scene.Ecs_World.NewId()
+	// scene.transforms.Insert(id, t)
+	return id
 }
+
+// func GetTransform(entId EntId) Transform {
+// 	return current_scene.transforms.Get(entId)
+// }
+
+// func GetPosition(entId EntId) Vector2f {
+// 	return current_scene.transforms.Get(entId).Position
+// }
+
+// func SetPosition(entId EntId, newPosition Vector2f) {
+// 	_t := current_scene.transforms.data[entId]
+// 	_t.Position = newPosition
+// 	current_scene.transforms.data[entId] = _t
+// }
 
 type Component = ecs.Component
 
@@ -156,12 +173,12 @@ type ShapesDrawingSystem struct {
 }
 
 func (sds *ShapesDrawingSystem) Update(dt float32) {
-	lineQuery := ecs.Query1[LineRenderComponent](GetCurrentScene().Ecs_World)
-	lineQuery.MapId(func(id ecs.Id, line *LineRenderComponent) {
-		if Cam.IsBoxInView(line.FromPoint, AbsVector2f(line.ToPoint.Subtract(line.FromPoint))) {
-			sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
-		}
-	})
+	// lineQuery := ecs.Query1[LineRenderComponent](GetCurrentScene().Ecs_World)
+	// lineQuery.MapId(func(id ecs.Id, line *LineRenderComponent) {
+	// 	if Cam.IsBoxInView(line.FromPoint, AbsVector2f(line.ToPoint.Subtract(line.FromPoint))) {
+	// 		sds.Shapes.DrawLine(line.FromPoint, line.ToPoint, line.Tint)
+	// 	}
+	// })
 
 	queryTri := ecs.Query2[Transform, TriangleRenderComponent](GetCurrentScene().Ecs_World)
 	queryTri.MapId(func(id ecs.Id, t *Transform, tri *TriangleRenderComponent) {
@@ -170,12 +187,12 @@ func (sds *ShapesDrawingSystem) Update(dt float32) {
 		}
 	})
 
-	queryFillTri := ecs.Query2[Transform, FillTriangleRenderComponent](GetCurrentScene().Ecs_World)
-	queryFillTri.MapId(func(id ecs.Id, t *Transform, tri *FillTriangleRenderComponent) {
-		if Cam.IsBoxInView(t.Position, tri.Dimensions.Scale(t.Scale)) {
-			sds.Shapes.DrawFillTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
-		}
-	})
+	// queryFillTri := ecs.Query2[Transform, FillTriangleRenderComponent](GetCurrentScene().Ecs_World)
+	// queryFillTri.MapId(func(id ecs.Id, t *Transform, tri *FillTriangleRenderComponent) {
+	// 	if Cam.IsBoxInView(t.Position, t.Dimensions.Scale(t.Scale)) {
+	// 		sds.Shapes.DrawFillTriangleRotated(t.Position, t.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+	// 	}
+	// })
 
 	queryRect := ecs.Query2[Transform, RectRenderComponent](GetCurrentScene().Ecs_World)
 	queryRect.MapId(func(id ecs.Id, t *Transform, rect *RectRenderComponent) {
@@ -200,18 +217,16 @@ func (sds *ShapesDrawingSystem) Update(dt float32) {
 		}
 	})
 
-	queryCircle := ecs.Query2[Transform, CircleRenderComponent](GetCurrentScene().Ecs_World)
-	queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleRenderComponent) {
-		if Cam.IsBoxInView(t.Position, NewVector2f(circ.Radius*t.Scale, circ.Radius*t.Scale)) {
-			sds.Shapes.DrawCircle(t.Position, circ.Radius*t.Scale, circ.Tint)
-		}
-	})
+	// queryCircle := ecs.Query2[Transform, CircleRenderComponent](GetCurrentScene().Ecs_World)
+	// queryCircle.MapId(func(id ecs.Id, t *Transform, circ *CircleRenderComponent) {
+	// 	if Cam.IsBoxInView(t.Position, NewVector2f(circ.Radius*t.Scale, circ.Radius*t.Scale)) {
+	// 		sds.Shapes.DrawCircle(t.Position, circ.Radius*t.Scale, circ.Tint)
+	// 	}
+	// })
 }
 
 type LineRenderComponent struct {
-	FromPoint Vector2f
-	ToPoint   Vector2f
-	Tint      RGBA8
+	Tint RGBA8
 }
 
 type TriangleRenderComponent struct {
@@ -221,8 +236,7 @@ type TriangleRenderComponent struct {
 }
 
 type FillTriangleRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
+	Tint RGBA8
 }
 
 type RectRenderComponent struct {
@@ -240,8 +254,7 @@ type FillRectBottomRenderComponent struct {
 }
 
 type CircleRenderComponent struct {
-	Radius float32
-	Tint   RGBA8
+	Tint RGBA8
 }
 
 /*

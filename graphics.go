@@ -766,7 +766,7 @@ var (
 		sh.DrawCircle(v1, v2.X, c)
 	}
 	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
-		sh.DrawLine(v1, v2, c)
+		sh.DrawLine(v1, v1.Add(v2), c)
 	}
 )
 
@@ -784,12 +784,65 @@ func newRenderObject(entId EntId, _tint RGBA8, _objectType renderObjectFuncType)
 	}
 }
 
-func NewQuadComponent(thisScene *Scene, entId EntId, tint RGBA8) FillRectRenderComponent {
+func NewQuadComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillRectRenderComponent {
 	renderObj := newRenderObject(entId, tint, QUAD_RENDEROBJECTTYPEFUNC)
 	t, _ := GetComponent[Transform](thisScene, entId)
-	RenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	}
 
 	return FillRectRenderComponent{
+		Tint: tint,
+	}
+}
+
+func NewTriangleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillTriangleRenderComponent {
+	renderObj := newRenderObject(entId, tint, TRI_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[Transform](thisScene, entId)
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	}
+
+	return FillTriangleRenderComponent{
+		Tint: tint,
+	}
+}
+
+func NewCircleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) CircleRenderComponent {
+	renderObj := newRenderObject(entId, tint, CIRCLE_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[Transform](thisScene, entId)
+	t.Dimensions = t.Dimensions.Scale(0.5)
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+	}
+
+	return CircleRenderComponent{
+		Tint: tint,
+	}
+}
+
+func NewLineComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) LineRenderComponent {
+	renderObj := newRenderObject(entId, tint, LINE_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[Transform](thisScene, entId)
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position, Size: t.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position, Size: t.Dimensions})
+	}
+
+	return LineRenderComponent{
 		Tint: tint,
 	}
 }
