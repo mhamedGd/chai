@@ -84,8 +84,8 @@ func Scale(s float32) goglmath.Matrix4 {
 
 const (
 	scalePercentage = 0.01
-	maxCamScale     = 32
-	minCamScale     = 0.1
+	maxCamScale     = 10000
+	minCamScale     = 0.0001
 )
 
 // Moves the viewport to a specific position (Bottom-Left)

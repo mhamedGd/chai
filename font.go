@@ -285,9 +285,9 @@ const (
 )
 
 type FontBatchAtlas struct {
-	charAtlasSet map[rune]CharAtlasGlyph
+	charAtlasSet Map[rune, CharAtlasGlyph]
 	textureAtlas Texture2D
-	sPatch       *SpriteBatch
+	SpriteBatch  *SpriteBatch
 	fontSettings FontBatchSettings
 }
 
@@ -305,13 +305,8 @@ type FontBatchSettings struct {
 }
 
 func (self *FontBatchAtlas) Init() {
-	self.charAtlasSet = make(map[rune]CharAtlasGlyph)
-	if self.sPatch == nil {
-		self.sPatch = &SpriteBatch{}
-		self.sPatch.Init("font.shader")
-	}
-	self.sPatch = &UISprites
-
+	self.charAtlasSet = NewMap[rune, CharAtlasGlyph]()
+	self.SpriteBatch = &Sprites
 }
 
 const GLYPH_ATLAS_GAP = 5
@@ -405,7 +400,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 		y_offset = img.Bounds().Dy()
 
 		if char == ' ' {
-			tempFont.charAtlasSet[char] = CharAtlasGlyph{uv1: Vector2fZero, uv2: Vector2fZero, size: Vector2fZero, bearing: Vector2fOne, advance: float32(ad) / float32(1<<6)}
+			tempFont.charAtlasSet.Set(char, CharAtlasGlyph{uv1: Vector2fZero, uv2: Vector2fZero, size: Vector2fZero, bearing: Vector2fOne, advance: float32(ad) / float32(1<<6)})
 			continue
 		}
 
@@ -414,13 +409,13 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 			//LogF("Failed to load bounds of rune: %v", char)
 		}
 
-		tempFont.charAtlasSet[char] = CharAtlasGlyph{
+		tempFont.charAtlasSet.Set(char, CharAtlasGlyph{
 			NewVector2f(float32(x_offset)/float32(max_width), 0),
 			NewVector2f(float32(x_offset+img.Bounds().Dx())/float32(max_width), float32(y_offset)/float32(max_height)),
 			NewVector2f(float32(img.Bounds().Dx()), float32(img.Bounds().Dy())),
 			NewVector2f(float32(bounds.Max.X)/64.0, float32(-bounds.Max.Y)/64.0),
 			float32(ad) / 64.0,
-		}
+		})
 		draw.Draw(atlas_img, image.Rect(x_offset, 0, x_offset+img.Bounds().Dx(), y_offset), img, image.ZP, draw.Src)
 		x_offset += img.Bounds().Dx() + GLYPH_ATLAS_GAP
 	}
@@ -439,13 +434,13 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 				continue
 			}
 
-			tempFont.charAtlasSet[c] = CharAtlasGlyph{
+			tempFont.charAtlasSet.Set(c, CharAtlasGlyph{
 				NewVector2f(float32(x_offset)/float32(max_width), 0),
 				NewVector2f(float32(x_offset+img.Bounds().Dx())/float32(max_width), float32(y_offset)/float32(max_height)),
 				NewVector2f(float32(img.Bounds().Dx()), float32(img.Bounds().Dy())),
 				NewVector2f(float32(bounds.Max.X)/64.0-float32(bounds.Min.X)/64.0, float32(-bounds.Max.Y)/64.0),
 				float32(ad) / 64.0,
-			}
+			})
 			draw.Draw(atlas_img, image.Rect(x_offset, 0, x_offset+img.Bounds().Dx(), y_offset), img, image.ZP, draw.Src)
 			x_offset += img.Bounds().Dx() + GLYPH_ATLAS_GAP
 		}
@@ -454,194 +449,6 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 	tempFont.textureAtlas = LoadTextureFromImg(atlas_img)
 	return tempFont
 }
-
-/*
----------------------------------------
-*/
-// func LoadFontToAtlasFreetype(_fontPath string, _fontSettings *FontBatchSettings) FontBatchAtlas {
-// 	var tempFont FontBatchAtlas
-// 	tempFont.Init()
-// 	tempFont.fontSettings = *_fontSettings
-// 	fontChannel := make(chan []byte)
-
-// 	go LoadResponse(_fontPath, fontChannel)
-
-// 	f, err := truetype.Parse(<-fontChannel)
-
-// 	if err != nil {
-// 		LogF(err.Error())
-// 	}
-
-// 	face := truetype.NewFace(f, &truetype.Options{
-// 		Size:    float64(_fontSettings.FontSize),
-// 		DPI:     float64(_fontSettings.DPI),
-// 		Hinting: font.HintingFull,
-// 	})
-
-// 	max_width, max_height := int(0), int(0)
-
-// 	if !_fontSettings.Arabic {
-// 		for i := 33; i < 127; i++ {
-// 			char := rune(i)
-// 			sscale := f.FUnitsPerEm()
-// 			sscale = int32(_fontSettings.FontSize) * int32(_fontSettings.DPI) * 64 / 72
-// 			fupe := fixed.Int26_6(sscale)
-
-// 			glyph := truetype.GlyphBuf{}
-
-// 			err := glyph.Load(f, fupe, f.Index(char), font.HintingNone)
-// 			// _, img, _, _, ok := face.Glyph(dot, char)
-// 			if err != nil {
-// 				LogF("%v", err)
-// 			}
-// 			// if !ok {
-// 			// 	//LogF("Failed to load rune: %v", char)
-// 			// }
-
-// 			bounds_x := glyph.Bounds.Max.X - glyph.Bounds.Min.X
-// 			bounds_y := glyph.Bounds.Max.Y - glyph.Bounds.Min.Y
-// 			max_width += int(bounds_x) + GLYPH_ATLAS_GAP
-// 			if max_height < int(bounds_y) {
-// 				max_height = int(bounds_y)
-// 			}
-// 		}
-// 	} else {
-// 		for _, c := range ARABIC_UNICODE {
-// 			// _, img, _, _, ok := face.Glyph(dot, c)
-
-// 			// if !ok {
-// 			// 	// LogF("Failed to load rune: %c", c)
-// 			// }
-
-// 			// max_width += img.Bounds().Dx() + GLYPH_ATLAS_GAP
-// 			// if max_height < img.Bounds().Dy() {
-// 			// 	max_height = img.Bounds().Dy()
-// 			// }
-// 			sscale := f.FUnitsPerEm()
-// 			sscale = int32(_fontSettings.FontSize) * int32(_fontSettings.DPI) * 64 / 72
-// 			fupe := fixed.Int26_6(sscale)
-
-// 			glyph := truetype.GlyphBuf{}
-// 			err := glyph.Load(f, fupe, f.Index(c), font.HintingNone)
-
-// 			// _, img, _, _, ok := face.Glyph(dot, char)
-// 			if err != nil {
-// 				LogF("%v", err)
-// 			}
-// 			// if !ok {
-// 			// 	//LogF("Failed to load rune: %v", char)
-// 			// }
-// 			bounds_x := glyph.Bounds.Max.X - glyph.Bounds.Min.X
-// 			bounds_y := glyph.Bounds.Max.Y - glyph.Bounds.Min.Y
-// 			LogF("%c: %v", c, int(glyph.Bounds.Max.X-glyph.Bounds.Min.X))
-// 			max_width += int(bounds_x)/30 + GLYPH_ATLAS_GAP
-// 			if max_height < int(bounds_y)/30 {
-// 				max_height = int(bounds_y) / 30
-// 			}
-// 		}
-// 	}
-
-// 	LogF("w: %v, h: %v", max_width, max_height)
-// 	// max_width = 128
-// 	// max_height = 128
-// 	atlas_img := image.NewRGBA(image.Rect(0, 0, max_width, max_height))
-// 	draw.Draw(atlas_img, atlas_img.Bounds(), &image.Uniform{color.RGBA{255, 255, 255, 255}}, image.Point{}, draw.Src)
-
-// 	ctx := freetype.NewContext()
-// 	ctx.SetDPI(float64(_fontSettings.DPI))
-// 	ctx.SetFontSize(float64(_fontSettings.FontSize))
-// 	ctx.SetFont(f)
-// 	ctx.SetDst(atlas_img)
-// 	ctx.SetSrc(image.White)
-// 	ctx.SetClip(atlas_img.Bounds())
-
-// 	x_offset := 0
-// 	y_offset := 0
-
-// 	dot := fixed.Point26_6{X: 0, Y: 0}
-
-// 	if !_fontSettings.Arabic {
-// 		for i := 32; i < 127; i++ {
-// 			char := rune(i)
-
-// 			sscale := int32(_fontSettings.FontSize) * int32(_fontSettings.DPI) * 64 / 72
-// 			fupe := fixed.Int26_6(sscale)
-
-// 			g := truetype.GlyphBuf{}
-// 			err := g.Load(f, fupe, f.Index(char), font.HintingNone)
-// 			if err != nil {
-// 				LogF("%v", err)
-// 			}
-
-// 			// if !ok {
-// 			// 	//LogF("Failed To Draw Letter: %c", char)
-// 			// }
-
-// 			if char == ' ' {
-// 				// tempFont.charAtlasSet[char] = CharAtlasGlyph{uv1: Vector2fZero, uv2: Vector2fZero, size: Vector2fZero, bearing: Vector2fOne, advance: float32(ad) / float32(1<<6)}
-// 				continue
-// 			}
-// 			bounds_diff_x := g.Bounds.Max.X - g.Bounds.Min.X
-// 			bounds_diff_y := g.Bounds.Max.Y - g.Bounds.Min.Y
-// 			y_offset = int(bounds_diff_y)
-
-// 			LogF("%c -xoffset0: %v, -yoffset0: %v", char, float32(x_offset)/float32(max_width), 0)
-// 			LogF("%c -xoffset1: %v, -yoffset1: %v", char, float32(x_offset+int(bounds_diff_x))/float32(max_width), float32(y_offset)/float32(max_height))
-// 			tempFont.charAtlasSet[char] = CharAtlasGlyph{
-// 				// uv1: NewVector2f(float32(x_offset)/float32(max_width), 0),
-// 				// uv2: NewVector2f(float32(x_offset+int(bounds_diff_x))/float32(max_width), float32(y_offset)/float32(max_height)),
-// 				uv1:     NewVector2f(0.0, 0.0),
-// 				uv2:     NewVector2f(0.0020342923, 0.6347518),
-// 				size:    NewVector2f(float32(bounds_diff_x), float32(bounds_diff_y)),
-// 				bearing: NewVector2f(float32(g.Bounds.Min.X), float32(g.Bounds.Min.Y)),
-// 				advance: float32(g.AdvanceWidth),
-// 			}
-// 			pt := freetype.Pt(0, 0)
-// 			im := image.NewRGBA(image.Rect(0, 0, int(bounds_diff_x), int(bounds_diff_y)))
-// 			ctx.SetClip(im.Rect)
-// 			ctx.SetDst(im)
-// 			ctx.DrawString(string(rune(f.Index(char))), pt)
-// 			draw.Draw(atlas_img, image.Rect(x_offset, 0, x_offset+int(bounds_diff_x), y_offset), im, image.Point{}, draw.Src)
-// 			x_offset += int(bounds_diff_x) + GLYPH_ATLAS_GAP
-// 		}
-// 	} else {
-
-// 		for _, c := range ARABIC_UNICODE {
-// 			_, img, _, _, ok := face.Glyph(dot, c)
-// 			if !ok {
-// 				LogF("Failed To Draw Letter: %c", c)
-// 			}
-
-// 			fupe := fixed.Int26_6(f.FUnitsPerEm())
-// 			g := truetype.GlyphBuf{}
-// 			err := g.Load(f, fupe, f.Index(c), font.HintingNone)
-// 			if err != nil {
-// 				LogF("%v", err)
-// 			}
-
-// 			bounds_diff_x := (g.Bounds.Max.X - g.Bounds.Min.X)
-// 			bounds_diff_y := (g.Bounds.Max.Y - g.Bounds.Min.Y)
-// 			y_offset = int(bounds_diff_y)
-
-// 			tempFont.charAtlasSet[c] = CharAtlasGlyph{
-// 				uv1:     NewVector2f(float32(x_offset)/float32(max_width), 0),
-// 				uv2:     NewVector2f(float32(x_offset+int(bounds_diff_x))/float32(max_width), float32(y_offset)/float32(max_height)),
-// 				size:    NewVector2f(float32(bounds_diff_x), float32(bounds_diff_y)),
-// 				bearing: NewVector2f(float32(bounds_diff_x), float32(g.Bounds.Min.Y)),
-// 				advance: float32(g.AdvanceWidth),
-// 			}
-// 			draw.Draw(atlas_img, image.Rect(x_offset, 0, x_offset+int(bounds_diff_x), y_offset), img, image.ZP, draw.Src)
-// 			x_offset += int(bounds_diff_x) + GLYPH_ATLAS_GAP
-// 		}
-// 	}
-
-// 	tempFont.textureAtlas = LoadTextureFromImg(atlas_img)
-// 	return tempFont
-// }
-
-/*
----------------------------------------
-*/
 
 func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _tint RGBA8) {
 	if self.fontSettings.Arabic {
@@ -656,7 +463,7 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 	originalPos := _position
 
 	for _, v := range _text {
-		charglyph, ok := self.charAtlasSet[v]
+		charglyph := self.charAtlasSet.Get(v)
 
 		if v == ' ' {
 			originalPos.X += charglyph.advance * _scale
@@ -667,13 +474,13 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 			continue
 		}
 
-		if !ok {
+		if !self.charAtlasSet.Has(v) {
 			continue
 		}
 
 		loc_pos := originalPos
 		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.sPatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
 		originalPos.X += charglyph.advance * _scale
 	}
 
@@ -690,8 +497,8 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 	originalPos := _position
 
 	for _, v := range _new_text {
-		charglyph, ok := self.charAtlasSet[v]
-		if !ok {
+		charglyph := self.charAtlasSet.Get(v)
+		if !self.charAtlasSet.Has(v) {
 			continue
 		}
 
@@ -706,12 +513,12 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 		loc_pos := originalPos
 		loc_pos.X -= charglyph.bearing.X * _scale
 		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.sPatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
 
 		originalPos.X -= charglyph.advance * _scale
 	}
 }
 
 func (self *FontBatchAtlas) Render() {
-	self.sPatch.Render()
+	self.SpriteBatch.Render()
 }

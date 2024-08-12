@@ -34,6 +34,10 @@ type PhysicsWorld struct {
 	cpSpace *cp.Space
 }
 
+func SetGravity(_new_grav Vector2f) {
+	GetPhysicsWorld().cpSpace.SetGravity(cpVector2f(_new_grav))
+}
+
 // var worldContactListener ChaiContactListener
 var dCollisionHandler *cp.CollisionHandler
 var sCollisionHandler *cp.CollisionHandler
@@ -43,7 +47,8 @@ func newPhysicsWorld(gravity Vector2f) PhysicsWorld {
 	// worldContactListener = ChaiContactListener{}
 
 	s := cp.NewSpace()
-	s.Iterations = 20
+	s.Iterations = 10
+
 	s.SetGravity(cpVector2f(gravity))
 
 	dCollisionHandler = s.NewWildcardCollisionHandler(cp.BODY_DYNAMIC)
@@ -78,8 +83,8 @@ type RigidBodyComponent struct {
 	cpShape          *cp.Shape
 	RBSettings       *RigidBodySettings
 	OwnerEntityId    EntId
-	OnCollisionBegin ChaiEvent[Collision]
-	OnCollisionEnd   ChaiEvent[Collision]
+	OnCollisionBegin ChaiEvent1[Collision]
+	OnCollisionEnd   ChaiEvent1[Collision]
 	Offset           Vector2f
 }
 
@@ -115,18 +120,20 @@ func NewRigidBody(entityId EntId, rbSettings *RigidBodySettings) RigidBodyCompon
 	case Shape_RectBody:
 		// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
 		box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
+		body.SetMoment(cp.MomentForBox(float64(rbSettings.Mass), box.T-box.B, box.R-box.L))
 		shape = cp.NewBox2(body, box, 0.0)
-		body.SetMoment(cp.MomentForBox2(float64(rbSettings.Mass), box))
 		shape.SetMass(float64(rbSettings.Mass))
+
 		// shape.SetCollisionType()
 	case Shape_CircleBody:
-		shape = cp.NewCircle(body, size.X, cpVector2f(Vector2fZero))
 		body.SetMoment(cp.MomentForCircle(float64(rbSettings.Mass), 0.0, float64(2*PI*rbSettings.StartDimensions.X), cpVector2f(Vector2fZero)))
+		shape = cp.NewCircle(body, size.X, cpVector2f(Vector2fZero))
 		shape.SetMass(float64(rbSettings.Mass))
 	}
 
 	if rbSettings.ConstrainRotation {
-		body.SetMoment(cp.INFINITY)
+		// pivotJoint := cp.NewPivotJoint(body, physics_world.cpSpace.StaticBody, cpVector2f(NewVector2f(float32(size.X)/2.0, float32(size.Y)/2.0)))
+		// physics_world.cpSpace.AddConstraint(pivotJoint)
 	}
 
 	shape.Filter.Categories = PhysicsLayer_All
@@ -137,6 +144,8 @@ func NewRigidBody(entityId EntId, rbSettings *RigidBodySettings) RigidBodyCompon
 	shape.SetSensor(rbSettings.IsTrigger)
 
 	body.UserData = entityId
+	shape.UserData = body
+
 	GetPhysicsWorld().cpSpace.AddBody(body)
 	GetPhysicsWorld().cpSpace.AddShape(shape)
 
@@ -145,8 +154,8 @@ func NewRigidBody(entityId EntId, rbSettings *RigidBodySettings) RigidBodyCompon
 		cpShape:          shape,
 		RBSettings:       rbSettings,
 		OwnerEntityId:    entityId,
-		OnCollisionBegin: ChaiEvent[Collision]{listeners: make([]EventFunc[Collision], 0)},
-		OnCollisionEnd:   ChaiEvent[Collision]{listeners: make([]EventFunc[Collision], 0)},
+		OnCollisionBegin: ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
+		OnCollisionEnd:   ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
 		Offset:           rbSettings.Offset,
 	}
 }
@@ -156,7 +165,7 @@ func (rb *RigidBodyComponent) SetPosition(newPosition Vector2f) {
 }
 
 func (rb *RigidBodyComponent) SetRotation(newRotation float32) {
-	rb.cpBody.SetAngle(float64(newRotation))
+	rb.cpBody.SetAngle(float64(newRotation) * Deg2Rad)
 }
 
 func (rb *RigidBodyComponent) SetVelocity(newVelocity Vector2f) {
@@ -189,9 +198,12 @@ func (rb *RigidBodyComponent) OnCollisionTouch() {
 func beginCollision(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool {
 	bodyA, bodyB := arb.Bodies()
 
-	rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
+	if bodyA.UserData.(EntId) > 0 {
 
-	rbA.OnCollisionBegin.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
+		rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
+
+		rbA.OnCollisionBegin.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
+	}
 
 	return true
 }
@@ -199,9 +211,12 @@ func beginCollision(arb *cp.Arbiter, space *cp.Space, userData interface{}) bool
 func endCollision(arb *cp.Arbiter, space *cp.Space, userData interface{}) {
 	bodyA, bodyB := arb.Bodies()
 
-	rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
+	if bodyA.UserData.(EntId) > 0 {
+		rbA, _ := ecs.Read[RigidBodyComponent](current_scene.Ecs_World, bodyA.UserData.(EntId))
 
-	rbA.OnCollisionEnd.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
+		rbA.OnCollisionEnd.Invoke(Collision{CollisionPoint: chaiCPVector(arb.ContactPointSet().Points[0].PointA), EntA: bodyA.UserData.(EntId), EntB: bodyB.UserData.(EntId)})
+
+	}
 }
 
 type Collision struct {
@@ -230,17 +245,26 @@ func RayCast(origin, direction Vector2f, distance float32, physicsLayer uint) Ra
 	return hit
 }
 
-type RigidBodySystem struct {
-	EcsSystem
+func LineCast(origin, distanation Vector2f, physicsLayer uint) RaycastHit {
+	hit := RaycastHit{}
+	info := physics_world.cpSpace.SegmentQueryFirst(cpVector2f(origin), cpVector2f(distanation), 0.0, cp.NewShapeFilter(cp.NO_GROUP, physicsLayer, physicsLayer))
+
+	hit.OriginPoint = origin
+	hit.HitPosition = chaiCPVector(info.Point)
+	hit.Normal = chaiCPVector(info.Normal)
+	hit.HasHit = info.Shape != nil
+
+	return hit
 }
 
-func (rbs *RigidBodySystem) Update(dt float32) {
-	Iterate2[Transform, RigidBodyComponent](func(i EntId, t *Transform, rb *RigidBodyComponent) {
+func RigidBodySystem(_this_scene *Scene, _dt float32) {
+	Iterate2[VisualTransform, RigidBodyComponent](func(i EntId, t *VisualTransform, rb *RigidBodyComponent) {
 		// 		t.Position.X = dbc.phy_body.GetPosition().X
 		// 		t.Position.Y = dbc.phy_body.GetPosition().Y
 		// 		t.Rotation = float32(dbc.phy_body.body.GetAngle() * Rad2Deg)
 		t.Position.X = float32(rb.cpBody.Position().X) + rb.Offset.X
 		t.Position.Y = float32(rb.cpBody.Position().Y) + rb.Offset.Y
+		rb.cpBody.SetAngle(BoolToFloat64(!rb.RBSettings.ConstrainRotation) * rb.cpBody.Angle())
 		t.Rotation = float32(rb.cpBody.Angle() * Rad2Deg)
 
 	})

@@ -9,9 +9,28 @@ func NewList[T any]() List[T] {
 		Data: make([]T, 0),
 	}
 }
+func NewListSized[T any](_size int) List[T] {
+	return List[T]{
+		Data: make([]T, _size),
+	}
+}
+
+func ListFromSlice[T any](_slice []T) List[T] {
+	return List[T]{
+		Data: _slice,
+	}
+}
 
 func (l *List[T]) PushBack(item T) {
 	l.Data = append(l.Data, item)
+}
+
+func (l *List[T]) PushbackList(pl List[T]) {
+	l.Data = append(l.Data, pl.Data...)
+}
+
+func (l *List[T]) PushBackArray(arr []T) {
+	l.Data = append(l.Data, arr...)
 }
 
 func (l *List[T]) Erase(index int) {
@@ -132,6 +151,15 @@ func (m *Map[A, B]) SetLatestElement(item B) {
 
 func (m *Map[A, B]) Get(key A) B {
 	return m.data[key]
+}
+func (m *Map[A, B]) GetOk(key A) (B, bool) {
+	e, ok := m.data[key]
+	return e, ok
+}
+
+func (m *Map[A, B]) Has(key A) bool {
+	_, ok := m.data[key]
+	return ok
 }
 
 func (m *Map[A, B]) Set(key A, value B) {

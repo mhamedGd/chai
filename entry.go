@@ -21,18 +21,6 @@ type App struct {
 var tempUpdate func(float32)
 var tempDraw func(float32)
 
-/*
-USING THE EventFunc[T] type ------- (1)
-
-	var custom_func EventFunc[string] = func(x ...string) {
-		fmt.Printf(x[0] + "\n")
-	}
-
-USING THE EventFunc[T] type ------- (1)
-*/
-
-// *** Declaring an ChaiEvent[T] *** var event ChaiEvent[int] ------- (2)
-
 var currentWidth, currentHeight int
 var canvas js.Value
 var appRef *App
@@ -55,8 +43,8 @@ var UISprites SpriteBatch
 var started bool = false
 
 var physics_world PhysicsWorld
-var RenderQuadTreeContainer StaticQuadTreeContainer[Pair[Transform, RenderObject]]
-var DynamicRenderQuadTreeContainer StaticQuadTreeContainer[RenderObject]
+var RenderQuadTreeContainer StaticQuadTreeContainer[Pair[VisualTransform, RenderObject]]
+var DynamicRenderQuadTreeContainer DynamicQuadTreeContainer[RenderObject]
 
 var MouseCanvasPos Vector2f
 var TouchCanvasPos [2]Vector2f
@@ -64,7 +52,7 @@ var canvasBoundingClientRect js.Value
 
 var mousePressed MouseButton
 var numOfFingersTouching uint8
-var LeftMouseJustPressed ChaiEvent[int]
+var LeftMouseJustPressed ChaiEvent1[int]
 
 func GetPhysicsWorld() *PhysicsWorld {
 	return &physics_world
@@ -154,9 +142,11 @@ func Run(_app *App) {
 	TouchCanvasPos[0] = NewVector2f(0.0, 0.0)
 	TouchCanvasPos[1] = NewVector2f(0.0, 0.0)
 
+	// canvasContext.Call("pixelStorei", canvasContext.Get("UNPACK_ALIGNMENT"))
 	initTextures()
 	InitInputs()
-	physics_world = newPhysicsWorld(NewVector2f(0.0, -200.0))
+
+	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.0))
 
 	js.Global().Set("js_update", js.FuncOf(JSUpdate))
 	js.Global().Set("js_draw", js.FuncOf(JSDraw))
@@ -169,10 +159,10 @@ func Run(_app *App) {
 	uiCam.Init(*_app)
 	uiCam.Update(*_app)
 
-	RenderQuadTreeContainer = NewStaticQuadTreeContainer[Pair[Transform, RenderObject]]()
-	DynamicRenderQuadTreeContainer = NewStaticQuadTreeContainer[RenderObject]()
+	RenderQuadTreeContainer = NewStaticQuadTreeContainer[Pair[VisualTransform, RenderObject]]()
+	DynamicRenderQuadTreeContainer = NewDynamicQuadTreeContainer[RenderObject]()
 	RenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(1000.0, 1000.0)})
-	DynamicRenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(1000.0, 1000.0)})
+	DynamicRenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(10000.0, 10000.0)})
 
 	Shapes.Init()
 	Assert(Shapes.Initialized, "Shapes Rendering was not initialized successfully")
@@ -241,36 +231,17 @@ func Run(_app *App) {
 		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
 		_app.OnEvent(ae)
 	})
-
-	/*
-		Using the ChaiEvent[T] ------- (2)
-
-			event.AddListener(print_s)
-			event.Invoke(1, 20003)
-			event.RemoveListener(print_s)
-	*/
-
 	/*
 		////////// FINAL CHECKS ////////////
 	*/
-	//custom_func("STRING") ------- (1)
 	_app.OnStart()
 	Assert(current_scene != nil, "Current Scene is none")
 	if !started {
 		started = true
 	}
+
 	select {}
 }
-
-/*
---------- (2)
-
-	func print_s(s ...int) {
-		fmt.Println(s[1])
-	}
-
---------- (2)
-*/
 
 var ElapsedTime float32
 var deltaTime float32
@@ -294,15 +265,14 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
-	current_scene.OnSceneUpdate(deltaTime, current_scene)
 	current_scene.OnUpdate(deltaTime)
 	updateInput()
 	Cam.Update(*appRef)
 	uiCam.Update(*appRef)
 
 	for _, v := range DynamicRenderQuadTreeContainer.allItems.AllItems() {
-		t := GetComponentPtr[Transform](current_scene, v.item.entId)
-		DynamicRenderQuadTreeContainer.Relocate(&v, Rect{t.Position, t.Dimensions})
+		t := GetComponentPtr[VisualTransform](current_scene, v.item.entId)
+		DynamicRenderQuadTreeContainer.Relocate(&v, Rect{t.Position.Subtract(t.Dimensions.Scale(0.5)), t.Dimensions})
 	}
 	// LogF("%v", RenderQuadTreeContainer.allItems.Count())
 
@@ -330,42 +300,33 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
 
 	current_scene.OnDraw()
-	ScreenDims := NewVector2f(float32(appRef.Width), float32(appRef.Height))
 	RenderQuadTreeContainer.QuadsCount = 0
 
+	ScreenDims := NewVector2f(float32(appRef.Width), float32(appRef.Height))
 	ScreenRect := Rect{Position: ScreenDims.Scale(-0.5).Scale(1 / Cam.GetScale()).Add(Cam.GetPosition()), Size: ScreenDims.Scale(1 / Cam.GetScale())}
-	quadsInView := RenderQuadTreeContainer.Search(ScreenRect)
 
-	for _, v := range quadsInView.AllItems() {
-		// chai.Shapes.DrawFillRect(v.First.Position, v.First.Dimensions, v.Second.Tint)
-		// rects_count++
-		t := v.item.First
-		// t := current_scene.transforms.Get(it.entId)
-		// v.objectType(&Shapes, t.Position, t.Dimensions, v.tint, t.Rotation)
-		// Shapes.DrawFillRectRotated(t.Position, t.Dimensions, v.item.Second.tint, t.Rotation)
-		v.item.Second.objectType(&Shapes, t.Position, t.Dimensions, v.item.Second.tint, t.Rotation)
+	for _, v := range RenderQuadTreeContainer.Search(ScreenRect).Data {
+		t := v.First
+		v.Second.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, v.Second.texture)
 		RenderQuadTreeContainer.QuadsCount++
-
 	}
-
 	dynmaicQuadInView := DynamicRenderQuadTreeContainer.Search(ScreenRect)
 
 	for _, v := range dynmaicQuadInView.AllItems() {
 		// chai.Shapes.DrawFillRect(v.First.Position, v.First.Dimensions, v.Second.Tint)
 		// rects_count++
 		it := v.item
-		t := GetComponentPtr[Transform](current_scene, it.entId)
+		t := GetComponentPtr[VisualTransform](current_scene, it.entId)
 		// t := current_scene.transforms.Get(it.entId)
 		// v.objectType(&Shapes, t.Position, t.Dimensions, v.tint, t.Rotation)
 		// Shapes.DrawFillRectRotated(t.Position, t.Dimensions, it.tint, t.Rotation)
-		v.item.objectType(&Shapes, t.Position, t.Dimensions, v.item.tint, t.Rotation)
-		RenderQuadTreeContainer.QuadsCount++
+		v.item.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, v.item.texture)
 
 	}
 
 	tempDraw(deltaTime)
-	Shapes.Render(&Cam)
 	Sprites.Render()
+	Shapes.Render(&Cam)
 	UIShapes.Render(&uiCam)
 	UISprites.Render()
 	return nil
@@ -380,12 +341,12 @@ func NumOfQuadsInView() int {
 	return RenderQuadTreeContainer.QuadsInViewCount()
 }
 
-// func GetAllQuadsInView() []*renderObject {
-// 	ScreenDims := NewVector2f(float32(appRef.Width), float32(appRef.Height))
-// 	return RenderQuadTreeContainer.Search(Rect{Position: ScreenDims.Scale(-0.5).Scale(1 / Cam.GetScale()).Add(Cam.GetPosition()), Size: ScreenDims.Scale(1 / Cam.GetScale())})
-// }
-
-func GetStaticQuadsInRect(rArea Rect) List[*QuadTreeItem[Pair[Transform, RenderObject]]] {
+func GetStaticQuadsInRect(rArea Rect) List[*Pair[VisualTransform, RenderObject]] {
 	list := RenderQuadTreeContainer.Search(rArea)
+	return list
+}
+
+func GetDynamicQuadsInRect(rArea Rect) List[*QuadTreeItem[RenderObject]] {
+	list := DynamicRenderQuadTreeContainer.Search(rArea)
 	return list
 }

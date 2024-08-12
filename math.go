@@ -60,6 +60,31 @@ func LerpFloat32(_a, _b, _t float32) float32 {
 	return _a + (_b-_a)*_t
 }
 
+func LerpRot(_a, _b, _t float32) float32 {
+	_a = NormalizeAngle(_a)
+	_b = NormalizeAngle(_b)
+	delta := _b - _a
+
+	if delta > 180.0 {
+		delta -= 360
+	} else if delta < -180.0 {
+		delta += 360
+	}
+	return _a + delta*_t
+}
+
+func NormalizeAngle(_a float32) float32 {
+	// Normalize angle to [-180, 180]
+	// _a = _a % 360
+	_a = float32(math.Mod(float64(_a), 360))
+	if _a > 180 {
+		_a -= 360
+	} else if _a < -180 {
+		_a += 360
+	}
+	return _a
+}
+
 func LerpFloat64(_a, _b, _t float64) float64 {
 	return _a + (_b-_a)*_t
 }
@@ -69,8 +94,6 @@ func LerpInt(_a, _b int, _t float32) int {
 }
 
 func LerpUint8(_a, _b uint8, _t float32) uint8 {
-	LogF("%v", _a+(_b-_a)*uint8(_t*255))
-
 	return _a + (_b-_a)*uint8(_t*255)
 }
 
@@ -86,6 +109,13 @@ func Float1ToUint8_255(_inp float32) uint8 {
 
 func Uint8ToFloat1(_inp uint8) float32 {
 	return float32(_inp) / 255.0
+}
+
+func LerpVector2f(_a, _b Vector2f, _t float32) Vector2f {
+	return Vector2f{
+		X: _a.X + (_b.X-_a.X)*_t,
+		Y: _a.Y + (_b.Y-_a.Y)*_t,
+	}
 }
 
 /*
@@ -271,7 +301,7 @@ var (
 	Vector2fDown  Vector2f = Vector2f{0.0, -1.0}
 )
 
-func (v1 Vector2f) Equal(v2 *Vector2f) bool {
+func (v1 Vector2f) Equal(v2 Vector2f) bool {
 	return v1.X == v2.X && v1.Y == v2.Y
 }
 
@@ -440,8 +470,8 @@ func (v1 Vector2i) Div(v2 Vector2i) Vector2i {
 	return Vector2i{X: v1.X / v2.X, Y: v1.Y / v2.Y}
 }
 
-func (v Vector2i) Scale(_value float32) Vector2i {
-	return Vector2i{X: int(float32(v.X) * _value), Y: int(float32(v.Y) * _value)}
+func (v Vector2i) Scale(_value int) Vector2i {
+	return Vector2i{X: int(v.X * _value), Y: int(v.Y * _value)}
 }
 
 func AbsVector2i(_v *Vector2i) Vector2i {
@@ -500,7 +530,7 @@ func (v Vector2i) RotateCenter(_angle float32) Vector2i {
 }
 
 func Vector2fMidpointInt(v1, v2 Vector2i) Vector2i {
-	return v1.Add(v2).Scale(0.5)
+	return v1.Add(v2).Scale(1 / 2)
 }
 
 func (v Vector2i) ToString() string {

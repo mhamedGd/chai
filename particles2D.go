@@ -20,22 +20,22 @@ type Particle struct {
 
 type ParticlesShapeBatch struct {
 	shapes           *ShapeBatch
-	particles        []Particle
+	particles        List[Particle]
 	maxParticles     int
 	lastFreeParticle int
 }
 
-func newParticlesShapeBatch(_maxParticles int) *ParticlesShapeBatch {
+func newParticlesShapeBatch(_max_particles int) *ParticlesShapeBatch {
 	return &ParticlesShapeBatch{
 		shapes:           &Shapes,
-		particles:        make([]Particle, _maxParticles),
-		maxParticles:     _maxParticles,
+		particles:        NewListSized[Particle](_max_particles),
+		maxParticles:     _max_particles,
 		lastFreeParticle: 0,
 	}
 }
 
 func (p *ParticlesShapeBatch) addParticle(shape Gfx_Shape, lifeTime float32, pos, velo Vector2f, color RGBA8, size, rotation float32) {
-	p.particles[p.lastFreeParticle] = Particle{
+	p.particles.Data[p.lastFreeParticle] = Particle{
 		Shape:          shape,
 		Position:       pos,
 		Velocity:       velo,
@@ -45,18 +45,18 @@ func (p *ParticlesShapeBatch) addParticle(shape Gfx_Shape, lifeTime float32, pos
 		LifePercentage: 1.0,
 		Color:          color,
 	}
-	p.lastFreeParticle = (p.lastFreeParticle + 1) % len(p.particles)
+	p.lastFreeParticle = (p.lastFreeParticle + 1) % p.particles.Count()
 }
 
 func (p *ParticlesShapeBatch) findLastFreeParticle() int {
 	for i := p.lastFreeParticle; i < p.maxParticles; i++ {
-		if p.particles[i].LifePercentage <= 0.0 {
+		if p.particles.Data[i].LifePercentage <= 0.0 {
 			return i
 		}
 	}
 
 	for i := 0; i < p.lastFreeParticle; i++ {
-		if p.particles[i].LifePercentage <= 0.0 {
+		if p.particles.Data[i].LifePercentage <= 0.0 {
 			return i
 		}
 	}
@@ -99,19 +99,15 @@ func calculateSpreadWithSpeed(index, numOfParticles int, spread_pattern Particle
 	return Vector2fUp.Scale(-speed)
 }
 
-type ParticlesShapeUpdateSystem struct {
-	EcsSystem
-}
-
-func (ps *ParticlesShapeUpdateSystem) Update(dt float32) {
+func ParticlesShapeUpdateSystem(_this_scene *Scene, _dt float32) {
 	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
 		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
-			particle := &psc.particlesBatch.particles[i]
+			particle := &psc.particlesBatch.particles.Data[i]
 			if particle.LifePercentage > 0.0 {
 				particle.Position = particle.Position.Add(particle.Velocity)
-				particle.LifePercentage -= (1 / particle.LifeTime) * dt
+				particle.LifePercentage -= (1 / particle.LifeTime) * _dt
 
-				psc.UpdateParticle(dt, particle)
+				psc.UpdateParticle(_dt, particle)
 				if particle.LifePercentage <= 0.0 {
 					psc.particlesBatch.lastFreeParticle = i
 				}
@@ -120,14 +116,10 @@ func (ps *ParticlesShapeUpdateSystem) Update(dt float32) {
 	})
 }
 
-type ParticlesShapeRenderSystem struct {
-	EcsSystem
-}
-
-func (ps *ParticlesShapeRenderSystem) Update(dt float32) {
+func ParticlesShapeRenderSystem(_this_scene *Scene, _dt float32) {
 	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
 		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
-			particle := &psc.particlesBatch.particles[i]
+			particle := &psc.particlesBatch.particles.Data[i]
 			if particle.LifePercentage > 0.0 {
 				switch particle.Shape {
 				case GFX_SHAPE_RECT:

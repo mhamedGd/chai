@@ -133,8 +133,8 @@ const vertexByteSize uintptr = unsafe.Sizeof(Vertex{})
 type ShapeBatch struct {
 	vao               js.Value
 	vbo, ibo          js.Value
-	Vertices          []Vertex
-	Indices           []int32
+	Vertices          List[Vertex]
+	Indices           List[int32]
 	NumberOfElements  int
 	NumberOfInstances int
 	Shader            ShaderProgram
@@ -154,8 +154,8 @@ const (
 func (_shapesB *ShapeBatch) Init() {
 	_shapesB.LineWidth = 50
 
-	_shapesB.Vertices = make([]Vertex, 0)
-	_shapesB.Indices = make([]int32, 0)
+	_shapesB.Vertices = NewList[Vertex]()
+	_shapesB.Indices = NewList[int32]()
 
 	_shapesB.vao = canvasContext.Call("createVertexArray")
 	canvasContext.Call("bindVertexArray", _shapesB.vao)
@@ -198,18 +198,28 @@ func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
 	offset = offset.Normalize()
 	offset = offset.Scale(_sp.LineWidth)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _from.Subtract(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Subtract(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _from.Add(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Add(offset), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _from.Subtract(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Subtract(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _from.Add(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Add(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Subtract(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Subtract(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Add(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Add(offset), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
 
 	_sp.NumberOfInstances++
 }
@@ -272,34 +282,50 @@ func (_sp *ShapeBatch) DrawTriangleRotated(_center, _dimensions Vector2f, _color
 func (_sp *ShapeBatch) DrawFillTriangle(_center, _dimensions Vector2f, _color RGBA8) {
 	offset := _dimensions.Scale(0.5)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.NumberOfInstances++
 }
 
 func (_sp *ShapeBatch) DrawFillTriangleRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	offset := _dimensions.Scale(0.5)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+
+	_sp.NumberOfInstances++
 }
 
 func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA8) {
@@ -320,18 +346,60 @@ func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA
 func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8) {
 	offset := _dimensions.Scale(0.5)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
+
+	_sp.NumberOfInstances++
+
+}
+
+func (_sp *ShapeBatch) DrawFillRect_Rect(_rect Rect, _color RGBA8) {
+
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position, Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position.AddXY(0.0, _rect.Size.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position.AddXY(_rect.Size.X, 0), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Size, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(0.0, _rect.Size.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(_rect.Size.X, 0), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Size, Color: _color})
+
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
+
 	_sp.NumberOfInstances++
 
 }
@@ -339,18 +407,30 @@ func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8)
 func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color RGBA8) {
 	offset := NewVector2f(_dimensions.X/2.0, 0.0)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Subtract(offset), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Add(offset), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Subtract(offset), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Add(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Subtract(offset), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Add(offset), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
+
 	_sp.NumberOfInstances++
 
 }
@@ -358,18 +438,30 @@ func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color 
 func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	offset := _dimensions.Scale(0.5)
 
-	vertsSize := len(_sp.Vertices)
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Color: _color})
+	vertsSize := _sp.Vertices.Count()
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
+
 	_sp.NumberOfInstances++
 
 }
@@ -378,36 +470,45 @@ func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom, _dimensions Vector2f, 
 	// offset := NewVector2f(_dimensions.X/2.0, 0.0)
 	offset := _dimensions.Scale(0.5)
 
-	vertsSize := len(_sp.Vertices)
+	vertsSize := _sp.Vertices.Count()
 	//Bottom Left
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, 0.0).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, 0.0).Rotate(_rotation, _bottom), Color: _color})
 	//Top Left
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y*2).Rotate(_rotation, _bottom), Color: _color})
-	//Bottom Right
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, 0).Rotate(_rotation, _bottom), Color: _color})
-	//Top Right
-	_sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, offset.Y*2.0).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y*2).Rotate(_rotation, _bottom), Color: _color})
 
-	_sp.Indices = append(_sp.Indices, int32(vertsSize))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+2))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+1))
-	_sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	//Bottom Right
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, 0).Rotate(_rotation, _bottom), Color: _color})
+
+	//Top Right
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, offset.Y*2.0).Rotate(_rotation, _bottom), Color: _color})
+
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+2))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
+	// _sp.Indices = append(_sp.Indices, int32(vertsSize+3))
+	_sp.Indices.PushBack(int32(vertsSize + 0))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 2))
+	_sp.Indices.PushBack(int32(vertsSize + 1))
+	_sp.Indices.PushBack(int32(vertsSize + 3))
+
 	_sp.NumberOfInstances++
 
 }
 
 func (_sp *ShapeBatch) finalize() {
-	if len(_sp.Vertices) == 0 {
+	if _sp.Vertices.Count() == 0 {
 		_sp.NumberOfElements = 0
 		return
 	}
 
 	canvasContext.Call("bindVertexArray", _sp.vao)
 
-	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices)
-	jsElem := int32BufferToJsInt32Buffer(_sp.Indices)
+	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices.Data)
+	jsElem := int32BufferToJsInt32Buffer(_sp.Indices.Data)
 
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), _sp.vbo)
 	canvasContext.Call("bufferData", canvasContext.Get("ARRAY_BUFFER"), jsVerts, canvasContext.Get("STATIC_DRAW"))
@@ -427,10 +528,10 @@ func (_sp *ShapeBatch) finalize() {
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
 	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), js.Null())
 
-	_sp.NumberOfElements = len(_sp.Indices)
+	_sp.NumberOfElements = _sp.Indices.Count()
 
-	_sp.Vertices = _sp.Vertices[:0]
-	_sp.Indices = _sp.Indices[:0]
+	_sp.Vertices.Clear()
+	_sp.Indices.Clear()
 }
 
 func (_sp *ShapeBatch) Render(cam *Camera2D) {
@@ -509,7 +610,12 @@ uniform sampler2D genericSampler;
 out vec4 fragColor;
 
 void main(void) {
-	vec4 thisColor = vertex_FragColor * texture(genericSampler, vertex_UV);
+	ivec2 texSize = textureSize(genericSampler, 0);
+	float s_offset = (1.0 / (float(texSize.x))) * 0.0;
+	float t_offset = (1.0 / (float(texSize.y))) * 0.0;
+	vec2 tc_final =  vertex_UV + vec2(s_offset, t_offset);
+
+	vec4 thisColor = vertex_FragColor * texture(genericSampler, tc_final);
 	thisColor.r *= vertex_FragColor.a;
 	thisColor.g *= vertex_FragColor.a;
 	thisColor.b *= vertex_FragColor.a;
@@ -626,10 +732,12 @@ func (self *SpriteBatch) DrawSpriteOrigin(_center, _uv1, _uv2 Vector2f, _texture
 }
 func (self *SpriteBatch) DrawSpriteOriginScaled(_center, _uv1, _uv2 Vector2f, _scale float32, _texture *Texture2D, _tint RGBA8) {
 	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale), _uv1, _uv2, _texture, _tint))
-
 }
 func (self *SpriteBatch) DrawSpriteBottomLeft(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
 	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, _texture, _tint))
+}
+func (self *SpriteBatch) DrawSpriteBottomLeftRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, _texture, _tint, _rotation))
 }
 func (self *SpriteBatch) DrawSpriteBottomRight(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
 	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.AddXY(-_dimensions.Scale(0.5).X, _dimensions.Scale(0.5).Y), _dimensions, _uv1, _uv2, _texture, _tint))
@@ -753,58 +861,66 @@ func (self *SpriteBatch) createRenderBatches() {
 
 }
 
-type renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32)
+type renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D)
 
 var (
-	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
 		sh.DrawFillRectRotated(v1, v2, c, r)
 	}
-	TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+	TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
 		sh.DrawFillTriangleRotated(v1, v2, c, r)
 	}
-	CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+	CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
 		sh.DrawCircle(v1, v2.X, c)
 	}
-	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, v1, v2 Vector2f, c RGBA8, r float32) {
+	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
 		sh.DrawLine(v1, v1.Add(v2), c)
+	}
+	SPRITE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
+		// sp.DrawSpriteOriginScaledRotated(v1, v3, v4, v2.X, t, c, r)
+		// Sprites.DrawSpriteBottomLeft(v.Position, v.Dimensions, v.UV1, v.UV2, &tmc.tileset.texture, WHITE)
+		// sp.DrawSpriteBottomLeft(v1, v2, v3, v4, t, c)
+		sp.DrawSpriteBottomLeftRotated(v1, v2, v3, v4, t, c, r)
+
 	}
 )
 
 type RenderObject struct {
 	entId      EntId
 	objectType renderObjectFuncType
-	tint       RGBA8
+	texture    *Texture2D
 }
 
-func newRenderObject(entId EntId, _tint RGBA8, _objectType renderObjectFuncType) RenderObject {
+func newRenderObject(entId EntId, _objectType renderObjectFuncType) RenderObject {
 	return RenderObject{
 		entId:      entId,
 		objectType: _objectType,
-		tint:       _tint,
 	}
 }
 
 func NewQuadComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillRectRenderComponent {
-	renderObj := newRenderObject(entId, tint, QUAD_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[Transform](thisScene, entId)
+	renderObj := newRenderObject(entId, QUAD_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
 
 	} else {
-		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		// _index = DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		DynamicRenderQuadTreeContainer.InsertWithIndex(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions}, int64(entId))
 
 	}
 
 	return FillRectRenderComponent{
-		Tint: tint,
+		Tint:          tint,
+		QuadTreeIndex: int64(entId),
 	}
 }
 
 func NewTriangleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillTriangleRenderComponent {
-	renderObj := newRenderObject(entId, tint, TRI_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[Transform](thisScene, entId)
+	renderObj := newRenderObject(entId, TRI_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
@@ -817,11 +933,12 @@ func NewTriangleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool
 }
 
 func NewCircleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) CircleRenderComponent {
-	renderObj := newRenderObject(entId, tint, CIRCLE_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[Transform](thisScene, entId)
-	t.Dimensions = t.Dimensions.Scale(0.5)
+	renderObj := newRenderObject(entId, CIRCLE_RENDEROBJECTTYPEFUNC)
+	t := GetComponentPtr[VisualTransform](thisScene, entId)
+	t.Dimensions.X /= 2.0
+	t.Dimensions.Y /= 2.0
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{*t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
@@ -833,10 +950,10 @@ func NewCircleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) 
 }
 
 func NewLineComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) LineRenderComponent {
-	renderObj := newRenderObject(entId, tint, LINE_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[Transform](thisScene, entId)
+	renderObj := newRenderObject(entId, LINE_RENDEROBJECTTYPEFUNC)
+	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[Transform, RenderObject]{t, renderObj}, Rect{Position: t.Position, Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position, Size: t.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position, Size: t.Dimensions})
@@ -847,6 +964,18 @@ func NewLineComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) Li
 	}
 }
 
-func Compare(v1, v2 RenderObject) bool {
-	return v1.entId == v2.entId && v1.tint == v2.tint
+func NewSpriteComponent(thisScene *Scene, entId EntId, texture *Texture2D, tint RGBA8, static bool) SpriteComponent {
+	renderObj := newRenderObject(entId, SPRITE_RENDEROBJECTTYPEFUNC)
+	renderObj.texture = texture
+	t, _ := GetComponent[VisualTransform](thisScene, entId)
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(.5)), Size: t.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+	}
+
+	return SpriteComponent{
+		Tint: tint,
+	}
 }

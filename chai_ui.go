@@ -2,20 +2,16 @@ package chai
 
 type UIInteractionsComponent struct {
 	InteractionBox Vector2f
-	OnCursorEnter  ChaiEvent[EntId]
-	OnCursorExit   ChaiEvent[EntId]
-	OnClick        ChaiEvent[EntId]
-	OnRelease      ChaiEvent[EntId]
+	OnCursorEnter  ChaiEvent1[EntId]
+	OnCursorExit   ChaiEvent1[EntId]
+	OnClick        ChaiEvent1[EntId]
+	OnRelease      ChaiEvent1[EntId]
 	justEntered    bool
 	Disabled       bool
 }
 
-type UIInteractionSystem struct {
-	EcsSystem
-}
-
-func (uis *UIInteractionSystem) Update(dt float32) {
-	Iterate2[Transform, UIInteractionsComponent](func(i EntId, t *Transform, uc *UIInteractionsComponent) {
+func UIInteractionSystem(_this_scene *Scene, _dt float32) {
+	Iterate2[VisualTransform, UIInteractionsComponent](func(i EntId, t *VisualTransform, uc *UIInteractionsComponent) {
 		if uc.Disabled {
 			return
 		}
