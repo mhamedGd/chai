@@ -3,7 +3,7 @@ package chai
 import (
 	"strings"
 
-	cp "github.com/jakecoffman/cp/v2"
+	box2d "github.com/mhamedGd/chai-box2d"
 	ldtkgo "github.com/mhamedgd/ldtkgo-chai"
 )
 
@@ -54,21 +54,24 @@ func ParseLdtk(_filePath string) Map[string, Tilemap] {
 			for _, v := range l.Entities {
 				v.Position[1] *= -1
 				_, ok := total_entites.data[v.Identifier]
-				if ok {
-					total_entites.Insert(v.Identifier, append(total_entites.Get(v.Identifier), ldtkEntity{
-						Identifier:   v.Identifier,
-						Position:     IntArrToVec2f(v.Position),
-						GridPosition: IntArrToVec2i(v.Position),
-					}))
-				} else {
-					total_entites.Insert(v.Identifier, []ldtkEntity{
-						ldtkEntity{
-							Identifier:   v.Identifier,
-							Position:     IntArrToVec2f(v.Position),
-							GridPosition: IntArrToVec2i(v.Position),
-						},
-					})
+				if !ok {
+					total_entites.Set(v.Identifier, make([]ldtkEntity, 0))
 				}
+				// if ok {
+				total_entites.Insert(v.Identifier, append(total_entites.Get(v.Identifier), ldtkEntity{
+					Identifier:   v.Identifier,
+					Position:     IntArrToVec2f(v.Position),
+					GridPosition: IntArrToVec2i(v.Position),
+				}))
+				// } else {
+				// 	total_entites.Insert(v.Identifier, []ldtkEntity{
+				// 		ldtkEntity{
+				// 			Identifier:   v.Identifier,
+				// 			Position:     IntArrToVec2f(v.Position).Scale(_scale),
+				// 			GridPosition: IntArrToVec2i(v.Position),
+				// 		},
+				// 	})
+				// }
 			}
 
 			tiles := l.Tiles
@@ -98,6 +101,8 @@ func ParseLdtk(_filePath string) Map[string, Tilemap] {
 				tile_size:             l.GridSize,
 				tileset:               l.Tileset,
 				layertype:             l.Type,
+				physicsLayer:          PHYSICS_LAYER_1,
+				z_offset:              float32(li),
 			})
 		}
 
@@ -117,7 +122,7 @@ func ParseLdtk(_filePath string) Map[string, Tilemap] {
 	return temp_levels_map
 }
 
-func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, Tilemap], _offset Vector2f) *Tilemap {
+func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, Tilemap], _z float32, _offset Vector2f) *Tilemap {
 	// tilemap_level := ldtkLevels.Get(_level_name)
 	level := _all_levels.Get(_level_name)
 
@@ -174,6 +179,7 @@ func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, 
 			t := VisualTransform{
 				Position:   NewVector2f(float32(tiles.Data[i].Position[0])+BoolToFloat32(tiles.Data[i].FlipX())*float32(l.tile_size), float32(-tiles.Data[i].Position[1])+BoolToFloat32(tiles.Data[i].FlipY())*float32(l.tile_size)).Add(_offset),
 				Dimensions: NewVector2f(float32(l.tile_size)*flip_factor_x, float32(l.tile_size)*flip_factor_y),
+				Z:          _z + l.z_offset,
 				Scale:      1,
 				Tint:       NewRGBA8Float(1.0, 1.0, 1.0, l.opacity),
 				UV1:        origin_uv,
@@ -185,7 +191,8 @@ func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, 
 			tile_enumset := []string(l.tileset.Enums[tiles.Data[i].ID])
 			if len(tile_enumset) > 0 {
 				if tile_enumset[0] == "Solid" {
-					newStaticCollisionTile(scene, collider_pos, l.tile_size, level.Scale, PhysicsLayer_All)
+					// newStaticCollisionTile(scene, collider_pos, l.tile_size, level.Scale, PhysicsLayer_All)
+					newStaticCollisionTileBox2d(collider_pos, l.tile_size, 1.0, l.physicsLayer)
 					level.SolidTiles.Insert(NewVector2i(int(collider_pos.X), int(collider_pos.Y)), Tile{Enumset: ListFromSlice(tile_enumset), Solid: true})
 				}
 
@@ -226,6 +233,7 @@ func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, 
 			t := VisualTransform{
 				Position:   NewVector2f(float32(auto_tiles.Data[i].Position[0])+BoolToFloat32(auto_tiles.Data[i].FlipX())*float32(l.tile_size), float32(-auto_tiles.Data[i].Position[1])+BoolToFloat32(auto_tiles.Data[i].FlipY())*float32(l.tile_size)).Add(_offset),
 				Dimensions: NewVector2f(float32(l.tile_size)*flip_factor_x, float32(l.tile_size)*flip_factor_y),
+				Z:          _z + l.z_offset,
 				Scale:      1,
 				Tint:       NewRGBA8Float(1.0, 1.0, 1.0, l.opacity),
 				UV1:        origin_uv,
@@ -248,7 +256,8 @@ func LoadTilemapLevel(scene *Scene, _level_name string, _all_levels Map[string, 
 			tile_enumset := []string(l.tileset.Enums[auto_tiles.Data[i].ID])
 			if len(tile_enumset) > 0 {
 				if tile_enumset[0] == "Solid" {
-					newStaticCollisionTile(scene, collider_pos, l.tile_size, level.Scale, PhysicsLayer_All)
+					// newStaticCollisionTile(scene, collider_pos, l.tile_size, level.Scale, PhysicsLayer_All)
+					newStaticCollisionTileBox2d(collider_pos, l.tile_size, 1.0, l.physicsLayer)
 					level.SolidTiles.Insert(NewVector2i(auto_tiles.Data[i].Position[0]/l.tile_size, auto_tiles.Data[i].Position[1]/l.tile_size), Tile{Enumset: ListFromSlice(tile_enumset), Solid: true})
 				}
 
@@ -301,9 +310,10 @@ type levelLayer struct {
 	original_texture_size Vector2i
 	tile_size             int
 	opacity               float32
-	physicsLayer          uint
+	physicsLayer          uint16
 	tileset               *ldtkgo.Tileset
 	layertype             string
+	z_offset              float32
 }
 
 func IntArrToVec2f(original []int) Vector2f {
@@ -314,57 +324,82 @@ func IntArrToVec2i(origin []int) Vector2i {
 	return NewVector2i(origin[0], origin[1])
 }
 
-func newStaticCollisionTile(scene *Scene, _pos Vector2f, tile_size int, _scale float32, _physicsLayer uint) {
-	size := cpVector2f(NewVector2f(1.0, 1.0).Scale(float32(tile_size) / 2.0 * _scale))
-	body := cp.NewBody(1000000.0, 1000000.0)
+// func newStaticCollisionTile(scene *Scene, _pos Vector2f, tile_size int, _scale float32, _physicsLayer uint) {
+// 	size := cpVector2f(NewVector2f(1.0, 1.0).Scale(float32(tile_size) / 2.0 * _scale))
+// 	body := cp.NewBody(1000000.0, 1000000.0)
 
-	body.SetPosition(cpVector2f(_pos))
-	body.SetAngle((0) * Deg2Rad)
+// 	body.SetPosition(cpVector2f(_pos))
+// 	body.SetAngle((0) * Deg2Rad)
 
-	rbTypeToCpType(body, Type_BodyStatic)
-	var shape *cp.Shape
-	// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
-	box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
-	shape = cp.NewBox2(body, box, 0.0)
-	// body.SetMoment(cp.MomentForBox2(1000, box))
-	// shape.SetMass(float64(1000))
+// 	rbTypeToCpType(body, Type_BodyStatic)
+// 	var shape *cp.Shape
+// 	// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
+// 	box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
+// 	shape = cp.NewBox2(body, box, 0.0)
+// 	// body.SetMoment(cp.MomentForBox2(1000, box))
+// 	// shape.SetMass(float64(1000))
 
-	shape.SetElasticity(0.3)
-	shape.SetFriction(0.8)
+// 	shape.SetElasticity(0.3)
+// 	shape.SetFriction(0.8)
 
-	shape.Filter.Categories = PhysicsLayer_All
-	shape.Filter.Mask = _physicsLayer
+// 	shape.Filter.Categories = PHYSICS_LAYER_ALL
+// 	shape.Filter.Mask = _physicsLayer
 
-	body.UserData = EntId(0)
-	shape.UserData = body
+// 	body.UserData = EntId(0)
+// 	shape.UserData = body
 
-	GetPhysicsWorld().cpSpace.AddBody(body)
-	GetPhysicsWorld().cpSpace.AddShape(shape)
+// 	GetPhysicsWorld().cpSpace.AddBody(body)
+// 	GetPhysicsWorld().cpSpace.AddShape(shape)
+// }
+
+func newStaticCollisionTileBox2d(_position Vector2f, _tile_size int, _scale float32, _physics_layer uint16) {
+	size := vec2fToB2Vec(Vector2fOne.Scale((float32(_tile_size) / 2.0) * _scale))
+	bodydef := box2d.MakeB2BodyDef()
+	bodydef.Type = box2d.B2BodyType.B2_staticBody
+	bodydef.Position.Set(vec2fToB2Vec(_position).X, vec2fToB2Vec(_position).Y)
+	bodydef.AllowSleep = false
+	bodydef.FixedRotation = true
+
+	body := physics_world.box2dWorld.CreateBody(&bodydef)
+	fd := box2d.MakeB2FixtureDef()
+
+	shape := box2d.MakeB2PolygonShape()
+	shape.SetAsBox(size.X, size.Y)
+	fd.Shape = &shape
+
+	fd.Density = 100000
+	fd.Friction = 1.0
+	fd.Restitution = 0.0
+	fd.Filter.CategoryBits = _physics_layer
+	fixture := body.CreateFixtureFromDef(&fd)
+	fixture.SetSensor(false)
+
+	body.SetUserData(0)
 }
 
-func newRectStaticCollisionTile(scene *Scene, _rect Rect, tile_size int, _scale float32, _physicsLayer uint) {
-	size := cpVector2f(NewVector2f(_rect.Position.X+_rect.Size.X/2.0, _rect.Position.Y+_rect.Size.Y/2.0))
-	body := cp.NewBody(1000.0, 1000000)
+// func newRectStaticCollisionTile(scene *Scene, _rect Rect, tile_size int, _scale float32, _physicsLayer uint) {
+// 	size := cpVector2f(NewVector2f(_rect.Position.X+_rect.Size.X/2.0, _rect.Position.Y+_rect.Size.Y/2.0))
+// 	body := cp.NewBody(1000.0, 1000000)
 
-	body.SetPosition(cpVector2f(_rect.Position))
-	body.SetAngle((0) * Deg2Rad)
+// 	body.SetPosition(cpVector2f(_rect.Position))
+// 	body.SetAngle((0) * Deg2Rad)
 
-	rbTypeToCpType(body, Type_BodyStatic)
-	var shape *cp.Shape
-	// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
-	box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
-	shape = cp.NewBox2(body, box, 0.0)
-	// body.SetMoment(cp.MomentForBox2(1000, box))
-	// shape.SetMass(float64(1000))
+// 	rbTypeToCpType(body, Type_BodyStatic)
+// 	var shape *cp.Shape
+// 	// shape = cp.NewBox(body, size.X, size.Y/2.0, float64(rbSettings.StartRotation)*PI/180.0)
+// 	box := cp.NewBB(-size.X, -size.Y, size.X, size.Y)
+// 	shape = cp.NewBox2(body, box, 0.0)
+// 	// body.SetMoment(cp.MomentForBox2(1000, box))
+// 	// shape.SetMass(float64(1000))
 
-	shape.SetElasticity(0.3)
-	shape.SetFriction(0.8)
+// 	shape.SetElasticity(0.3)
+// 	shape.SetFriction(0.8)
 
-	shape.Filter.Categories = PhysicsLayer_All
-	shape.Filter.Mask = _physicsLayer
+// 	shape.Filter.Categories = PHYSICS_LAYER_ALL
+// 	shape.Filter.Mask = _physicsLayer
 
-	body.UserData = EntId(0)
+// 	body.UserData = EntId(5)
 
-	GetPhysicsWorld().cpSpace.AddBody(body)
-	GetPhysicsWorld().cpSpace.AddShape(shape)
-}
+// 	GetPhysicsWorld().cpSpace.AddBody(body)
+// 	GetPhysicsWorld().cpSpace.AddShape(shape)
+// }

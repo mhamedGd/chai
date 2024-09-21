@@ -66,12 +66,14 @@ func (p *ParticlesShapeBatch) findLastFreeParticle() int {
 
 type ParticlesShapeComponent struct {
 	particlesBatch *ParticlesShapeBatch
+	z              float32
 	UpdateParticle func(float32, *Particle)
 }
 
-func NewParticlesShapeComponent(_maxParticles int, _updateParticle func(float32, *Particle)) ParticlesShapeComponent {
+func NewParticlesShapeComponent(_maxParticles int, _z float32, _updateParticle func(float32, *Particle)) ParticlesShapeComponent {
 	return ParticlesShapeComponent{
 		particlesBatch: newParticlesShapeBatch(_maxParticles),
+		z:              _z,
 		UpdateParticle: _updateParticle,
 	}
 }
@@ -122,14 +124,14 @@ func ParticlesShapeRenderSystem(_this_scene *Scene, _dt float32) {
 			particle := &psc.particlesBatch.particles.Data[i]
 			if particle.LifePercentage > 0.0 {
 				switch particle.Shape {
-				case GFX_SHAPE_RECT:
-					psc.particlesBatch.shapes.DrawRectRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
-				case GFX_SHAPE_TRIANGLE:
-					psc.particlesBatch.shapes.DrawTriangleRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
-				case GFX_SHAPE_CIRCLE:
-					psc.particlesBatch.shapes.DrawCircle(particle.Position, particle.Size, particle.Color)
-				case GFX_SHAPE_FILLRECT:
-					psc.particlesBatch.shapes.DrawFillRectRotated(particle.Position, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+				case GFX_PARTICLES_SHAPE_RECT:
+					psc.particlesBatch.shapes.DrawRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+				case GFX_PARTICLES_SHAPE_TRIANGLE:
+					psc.particlesBatch.shapes.DrawTriangleRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+				case GFX_PARTICLES_SHAPE_CIRCLE:
+					psc.particlesBatch.shapes.DrawCircle(particle.Position, psc.z, particle.Size, particle.Color)
+				case GFX_PARTICLES_SHAPE_FILLRECT:
+					psc.particlesBatch.shapes.DrawFillRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				}
 
 			}

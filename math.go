@@ -53,6 +53,14 @@ func ClampInt(_value, _min, _max int) int {
 
 /*
 ###################################################################################
+############## REMAP - REMAP - REMAP ##############################################
+*/
+func RemapFloat32(_original, _origial_lowest, _original_highest, _new_lowest, _new_highest float32) float32 {
+	return _new_lowest + (_new_highest-_new_lowest)*(_original/(_original_highest-_origial_lowest))
+}
+
+/*
+###################################################################################
 ############## LERP - LERP - LERP #################################################
 */
 

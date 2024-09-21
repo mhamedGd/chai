@@ -43,6 +43,32 @@ type ChaiEvent5[A, B, C, D, E any] struct {
 // 	e.listeners = make([]EventFunc[T], 0)
 // }
 
+func NewChaiEvent1[A any]() ChaiEvent1[A] {
+	return ChaiEvent1[A]{
+		listeners: NewList[EventFunc1[A]](),
+	}
+}
+func NewChaiEvent2[A, B any]() ChaiEvent2[A, B] {
+	return ChaiEvent2[A, B]{
+		listeners: NewList[EventFunc2[A, B]](),
+	}
+}
+func NewChaiEvent3[A, B, C any]() ChaiEvent3[A, B, C] {
+	return ChaiEvent3[A, B, C]{
+		listeners: NewList[EventFunc3[A, B, C]](),
+	}
+}
+func NewChaiEvent4[A, B, C, D any]() ChaiEvent4[A, B, C, D] {
+	return ChaiEvent4[A, B, C, D]{
+		listeners: NewList[EventFunc4[A, B, C, D]](),
+	}
+}
+func NewChaiEvent5[A, B, C, D, E any]() ChaiEvent5[A, B, C, D, E] {
+	return ChaiEvent5[A, B, C, D, E]{
+		listeners: NewList[EventFunc5[A, B, C, D, E]](),
+	}
+}
+
 func (e *ChaiEvent1[A]) init() {
 	e.listeners = NewList[EventFunc1[A]]()
 }
@@ -346,7 +372,7 @@ const (
 	KEY_PAUSE        KeyCode = "Pause"
 	KEY_CAPSLOCK     KeyCode = "CapsLock"
 	KEY_ESCAPE       KeyCode = "Escape"
-	KEY_SPCAE        KeyCode = "Space"
+	KEY_SPACE        KeyCode = "Space"
 	KEY_PAGEUP       KeyCode = "PageUp"
 	KEY_PAGEDOWN     KeyCode = "PageDown"
 	KEY_END          KeyCode = "End"

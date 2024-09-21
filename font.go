@@ -282,6 +282,56 @@ const (
 	FONT_CENTERPAD int = 0xf1000000
 	FONT_LEFTPAD   int = 0xf2000000
 	FONT_RIGHTPAD  int = 0xf3000000
+	fONT_FRAGMENT      = `#version 300 es
+
+precision mediump float;
+
+in vec2 coordinates;
+in vec4 colors;
+in vec2 uv;
+
+out vec4 vertex_FragColor;
+out vec2 vertex_UV;
+
+uniform mat4 projection_matrix;
+uniform mat4 view_matrix;
+
+void main(void) {
+	vec4 global_position = vec4(0.0);
+	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
+	global_position.z = 0.0;
+	global_position.w = 1.0;		
+	gl_Position = global_position;
+	
+	
+	vertex_FragColor = colors;
+	vertex_UV = uv;
+}`
+	fONT_VERTEX = `#version 300 es
+
+precision mediump float;
+
+in vec4 vertex_FragColor;
+in vec2 vertex_UV;
+
+uniform sampler2D genericSampler;
+
+out vec4 fragColor;
+
+void main(void) {
+	vec4 textureColor = vertex_FragColor * texture(genericSampler, vertex_UV);
+	textureColor.r *= vertex_FragColor.a;
+	textureColor.g *= vertex_FragColor.a;
+	textureColor.b *= vertex_FragColor.a;
+	/*
+	if(thisColor.a > 0.0){
+		thisColor = vec4(1.0);
+	}else {
+		thisColor = vec4(0.0);
+	}
+	*/
+	fragColor = textureColor;
+}`
 )
 
 type FontBatchAtlas struct {
@@ -450,15 +500,15 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 	return tempFont
 }
 
-func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _tint RGBA8) {
+func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
 	if self.fontSettings.Arabic {
-		self.drawStringArabic(_text, _position, _scale, _tint)
+		self.drawStringArabic(_text, _position, _scale, _z, _tint)
 	} else {
-		self.drawStringEnglish(_text, _position, _scale, _tint)
+		self.drawStringEnglish(_text, _position, _scale, _z, _tint)
 	}
 }
 
-func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, _scale float32, _tint RGBA8) {
+func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
 
 	originalPos := _position
 
@@ -480,13 +530,13 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 
 		loc_pos := originalPos
 		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, _z, &self.textureAtlas, _tint)
 		originalPos.X += charglyph.advance * _scale
 	}
 
 }
 
-func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _scale float32, _tint RGBA8) {
+func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
 	_new_text := ShapeArabic(_text)
 	_new_text = reverse(_new_text)
 	numsArabic := findWordLowAndHigh(_new_text)
@@ -513,7 +563,7 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 		loc_pos := originalPos
 		loc_pos.X -= charglyph.bearing.X * _scale
 		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, &self.textureAtlas, _tint)
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, _z, &self.textureAtlas, _tint)
 
 		originalPos.X -= charglyph.advance * _scale
 	}

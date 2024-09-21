@@ -83,6 +83,40 @@ func NewPixel(r, g, b, a uint8) Pixel {
 	return pixel
 }
 
+func loadWhiteTexture() Texture2D {
+
+	var tempTexture Texture2D
+
+	tempTexture.Width = 1
+	tempTexture.Height = 1
+
+	pixels := make([]Pixel, tempTexture.Height*tempTexture.Width)
+
+	for y := 0; y < tempTexture.Height; y++ {
+		for x := 0; x < tempTexture.Width; x++ {
+			pixels[y*tempTexture.Width+x] = NewPixel(255, 255, 255, 255)
+		}
+	}
+
+	tempTexture.textureId = canvasContext.Call("createTexture")
+	canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE0"))
+	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), tempTexture.textureId)
+
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MIN_FILTER"), canvasContext.Get("NEAREST"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_MAG_FILTER"), canvasContext.Get("NEAREST"))
+
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_S"), canvasContext.Get("CLAMP_TO_EDGE"))
+	canvasContext.Call("texParameteri", canvasContext.Get("TEXTURE_2D"), canvasContext.Get("TEXTURE_WRAP_T"), canvasContext.Get("CLAMP_TO_EDGE"))
+
+	jsPixels := pixelBufferToJsPixelBubffer(pixels)
+
+	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
+
+	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), js.Null())
+
+	return tempTexture
+}
+
 func LoadPng(_filePath string, _textureSettings *TextureSettings) Texture2D {
 
 	var tempTexture Texture2D

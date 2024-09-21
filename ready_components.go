@@ -4,6 +4,7 @@ import "github.com/mhamedGd/chai/ecs"
 
 type VisualTransform struct {
 	Position   Vector2f
+	Z          float32
 	Dimensions Vector2f
 	Rotation   float32
 	Scale      float32
@@ -14,7 +15,6 @@ type VisualTransform struct {
 
 type SpriteComponent struct {
 	Texture Texture2D
-	Tint    RGBA8
 }
 
 func SpriteRenderSystem(_this_scene *Scene, _dt float32) {
@@ -30,14 +30,14 @@ func ShapesDrawingSystem(_this_scene *Scene, dt float32) {
 	queryTri := ecs.Query2[VisualTransform, TriangleRenderComponent](GetCurrentScene().Ecs_World)
 	queryTri.MapId(func(id ecs.Id, t *VisualTransform, tri *TriangleRenderComponent) {
 		if Cam.IsBoxInView(t.Position, tri.Dimensions.Scale(t.Scale)) {
-			Shapes.DrawTriangleRotated(t.Position, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
+			Shapes.DrawTriangleRotated(t.Position, t.Z, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
 		}
 	})
 
 	queryRect := ecs.Query2[VisualTransform, RectRenderComponent](GetCurrentScene().Ecs_World)
 	queryRect.MapId(func(id ecs.Id, t *VisualTransform, rect *RectRenderComponent) {
 		if Cam.IsBoxInView(t.Position, rect.Dimensions.Scale(t.Scale)) {
-			Shapes.DrawRectRotated(t.Position, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
+			Shapes.DrawRectRotated(t.Position, t.Z, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
 		}
 	})
 
@@ -45,13 +45,12 @@ func ShapesDrawingSystem(_this_scene *Scene, dt float32) {
 	queryFillRectBottom.MapId(func(id ecs.Id, t *VisualTransform, rect *FillRectBottomRenderComponent) {
 		rectDims := rect.Dimensions.Scale(t.Scale)
 		if Cam.IsBoxInView(t.Position.Subtract(rectDims.Scale(0.5)), rectDims) {
-			Shapes.DrawFillRectBottomRotated(t.Position, rectDims, rect.Tint, t.Rotation)
+			Shapes.DrawFillRectBottomRotated(t.Position, t.Z, rectDims, rect.Tint, t.Rotation)
 		}
 	})
 }
 
 type LineRenderComponent struct {
-	Tint RGBA8
 }
 
 type TriangleRenderComponent struct {
@@ -61,7 +60,6 @@ type TriangleRenderComponent struct {
 }
 
 type FillTriangleRenderComponent struct {
-	Tint RGBA8
 }
 
 type RectRenderComponent struct {
@@ -70,8 +68,6 @@ type RectRenderComponent struct {
 }
 
 type FillRectRenderComponent struct {
-	Tint          RGBA8
-	QuadTreeIndex int64
 }
 
 type FillRectBottomRenderComponent struct {
@@ -103,7 +99,7 @@ type FontRenderComponent struct {
 
 func FontRenderSystem(_this_scene *Scene, _dt float32) {
 	Iterate2[VisualTransform, FontRenderComponent](func(i ecs.Id, t *VisualTransform, frc *FontRenderComponent) {
-		frc.Fontbatch_atlas.DrawString(frc.Text, t.Position.Add(frc.Offset), frc.Scale, frc.Tint)
+		frc.Fontbatch_atlas.DrawString(frc.Text, t.Position.Add(frc.Offset), frc.Scale, t.Z, frc.Tint)
 	})
 }
 
@@ -212,6 +208,7 @@ func (anim *AnimationComponent[Vector2f]) NewTweenAnimationVector2f(animationNam
 	anim.Animations.Set(animationName, &TweenAnimation[Vector2f]{
 		KeyframeValues: NewList[TweenValue[Vector2f]](),
 		timeStepFactor: 0.0,
+		Loop:           loop,
 	})
 }
 
@@ -327,4 +324,130 @@ func TweenAnimatorSystem(_this_scene *Scene, _dt float32) {
 			}
 		}
 	})
+}
+
+// Sprite Animation
+//////////////////////////////////////////////////////
+
+type SpriteSheet struct {
+	Texture               Texture2D
+	Coloumns, Rows        int
+	TileWidth, TileHeight int
+	TextureCoordinates    List[Pair[Vector2f, Vector2f]]
+}
+
+func NewSpriteSheet(_tex Texture2D, _tile_width, _tile_height int) SpriteSheet {
+	_sprite_sheet := SpriteSheet{}
+	_sprite_sheet.TextureCoordinates = NewList[Pair[Vector2f, Vector2f]]()
+
+	_coloumns := _tex.Width / _tile_width
+	_rows := _tex.Height / _tile_height
+	for x := 0; x < _coloumns; x++ {
+		for y := 0; y < _rows; y++ {
+			_uv1 := NewVector2f(float32(x)/float32(_coloumns), float32(y)/float32(_rows))
+			_uv2 := NewVector2f(float32(x+1)/float32(_coloumns), float32(y+1)/float32(_rows))
+			_sprite_sheet.TextureCoordinates.PushBack(Pair[Vector2f, Vector2f]{_uv1, _uv2})
+		}
+	}
+
+	_sprite_sheet.Coloumns = _coloumns
+	_sprite_sheet.Rows = _rows
+	_sprite_sheet.TileWidth = _tile_width
+	_sprite_sheet.TileHeight = _tile_height
+	_sprite_sheet.Texture = _tex
+
+	return _sprite_sheet
+}
+
+type SpriteAnimaionComponent struct {
+	CurrentAnimation string
+	CurrentTimestep  float32
+	CurrentAnimStep  uint16
+	AnimationSpeed   int
+	Animations       Map[string, List[Vector2i]]
+	spriteSheet      *SpriteSheet
+}
+
+func NewSpriteAnimationComponent(_sprite_sheet *SpriteSheet) SpriteAnimaionComponent {
+	return SpriteAnimaionComponent{
+		CurrentAnimation: "",
+		CurrentTimestep:  0.0,
+		CurrentAnimStep:  0,
+		Animations:       NewMap[string, List[Vector2i]](),
+		spriteSheet:      _sprite_sheet,
+	}
+}
+
+func (_spa *SpriteAnimaionComponent) NewAnimation(_anim_name string) {
+	_spa.Animations.Set(_anim_name, NewList[Vector2i]())
+}
+
+func (_spa *SpriteAnimaionComponent) RegisterFrame(_anim_name string, _value Vector2i) {
+	_anim_list := _spa.Animations.Get(_anim_name)
+	_anim_list.PushBack(_value)
+	_spa.Animations.Set(_anim_name, _anim_list)
+}
+
+func (_spa *SpriteAnimaionComponent) RegisterFrames(_anim_name string, _values []Vector2i) {
+	_anim_list := _spa.Animations.Get(_anim_name)
+	for i := 0; i < len(_values); i++ {
+		_anim_list.PushBack(_values[i])
+	}
+	_spa.Animations.Set(_anim_name, _anim_list)
+}
+
+func SpriteAnimationSystem(_this_scene *Scene, _dt float32) {
+	Iterate2(func(i ecs.Id, t *VisualTransform, b *SpriteAnimaionComponent) {
+		if !b.Animations.Has(b.CurrentAnimation) {
+			return
+		}
+
+		// _animation_speed := 1.0 / float32(b.AnimationSpeed)
+		b.CurrentTimestep += _dt * float32(b.AnimationSpeed)
+		_animation_coords := b.Animations.Get(b.CurrentAnimation)
+		if b.CurrentTimestep >= 1.0 {
+			b.CurrentTimestep = 0.0
+			b.CurrentAnimStep += 1
+			if b.CurrentAnimStep >= uint16(_animation_coords.Count()) {
+				b.CurrentAnimStep = 0
+			}
+		}
+
+		_uv_coords := _animation_coords.Data[b.CurrentAnimStep]
+		t.UV1 = b.spriteSheet.TextureCoordinates.Data[b.spriteSheet.Coloumns*_uv_coords.Y+_uv_coords.X].First
+		t.UV2 = b.spriteSheet.TextureCoordinates.Data[b.spriteSheet.Coloumns*_uv_coords.Y+_uv_coords.X].Second
+	})
+}
+
+// Debug Draw
+//////////////////////////////////////////////////////
+
+func DebugBodyDrawSystem(_this_scene *Scene, _dt float32) {
+	_original := Shapes.LineWidth
+	_color := NewRGBA8(0, 255, 0, 150)
+	_z := float32(-1)
+	Shapes.LineWidth = 0.5
+	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
+		if dbc.settings.ColliderShape == SHAPE_RECTBODY {
+			Shapes.DrawRect(dbc.GetPosition(), _z, dbc.settings.StartDimensions, _color)
+		} else {
+			Shapes.DrawCircle(dbc.GetPosition(), _z, dbc.settings.StartDimensions.X/2.0, _color)
+		}
+	})
+	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
+		if sbc.settings.ColliderShape == SHAPE_RECTBODY {
+			Shapes.DrawRect(sbc.GetPosition(), _z, sbc.settings.StartDimensions, _color)
+		} else {
+			Shapes.DrawCircle(sbc.GetPosition(), _z, sbc.settings.StartDimensions.X/2.0, _color)
+		}
+	})
+	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
+		if kbc.settings.ColliderShape == SHAPE_RECTBODY {
+			Shapes.DrawRect(kbc.GetPosition(), _z, kbc.settings.StartDimensions, _color)
+		} else {
+			Shapes.DrawCircle(kbc.GetPosition(), _z, kbc.settings.StartDimensions.X/2.0, _color)
+		}
+	})
+
+	Shapes.LineWidth = _original
 }

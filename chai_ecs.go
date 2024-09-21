@@ -90,9 +90,26 @@ func ChangeScene(scene *Scene) {
 }
 
 func (scene *Scene) terminateScene() {
-	Iterate1[RigidBodyComponent](func(i ecs.Id, rbc *RigidBodyComponent) {
-		freeRigidbody(rbc)
+	// Iterate1[RigidBodyComponent](func(i ecs.Id, rbc *RigidBodyComponent) {
+	// 	freeRigidbody(rbc)
+	// })
+	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
+		// freeRigidbody(rbc)
+		physics_world.box2dWorld.DestroyBody(dbc.b2Body)
 	})
+	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
+		// freeRigidbody(rbc)
+		physics_world.box2dWorld.DestroyBody(sbc.b2Body)
+	})
+	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
+		// freeRigidbody(rbc)
+		physics_world.box2dWorld.DestroyBody(kbc.b2Body)
+	})
+	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.0))
+
+	DynamicRenderQuadTreeContainer.Clear()
+	RenderQuadTreeContainer.Clear()
+	scene.Ecs_World = ecs.NewWorld()
 	// scene.transforms.Clear()
 	// scene.update_systems = scene.update_systems[:0]
 	// scene.render_systems = scene.render_systems[:0]
@@ -153,7 +170,8 @@ func (scene *Scene) NewRenderSystem(sys func(_this_scene *Scene, _dt float32)) {
 }
 
 func (scene *Scene) SetGravity(new_gravity Vector2f) {
-	physics_world.cpSpace.SetGravity(cpVector2f(new_gravity))
+	// physics_world.cpSpace.SetGravity(cpVector2f(new_gravity))
+	physics_world.box2dWorld.SetGravity(vec2fToB2Vec(new_gravity))
 }
 
 func (scene *Scene) OnUpdate(dt float32) {

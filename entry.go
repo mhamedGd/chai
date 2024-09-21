@@ -35,6 +35,7 @@ func GetCanvasHeigth() int {
 var Cam Camera2D
 var Shapes ShapeBatch
 var Sprites SpriteBatch
+var Renderer Renderer2D
 
 var uiCam Camera2D
 var UIShapes ShapeBatch
@@ -83,6 +84,8 @@ func (_app *App) fillDefaults() {
 
 		}
 	}
+
+	setPhysicsFunctions(PHYSICS_ENGINE_BOX2D)
 }
 
 func Run(_app *App) {
@@ -113,6 +116,7 @@ func Run(_app *App) {
 
 	canvasContext.Call("blendFunc", canvasContext.Get("ONE"), canvasContext.Get("ONE_MINUS_SRC_ALPHA"), canvasContext.Get("ONE"), canvasContext.Get("ONE"))
 	canvasContext.Call("enable", canvasContext.Get("BLEND"))
+	canvasContext.Call("enable", canvasContext.Get("DEPTH_TEST"))
 
 	tempUpdate = _app.OnUpdate
 	tempDraw = _app.OnDraw
@@ -173,6 +177,7 @@ func Run(_app *App) {
 	UISprites.Init("")
 	Sprites.RenderCam = &Cam
 	UISprites.RenderCam = &uiCam
+	// Renderer = NewRenderer(_app, 50_000)
 
 	canvasContext.Call("viewport", 0, 0, appRef.Width, appRef.Height)
 
@@ -262,6 +267,7 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 	if deltaTime > CAP_DELTA_TIME {
 		deltaTime = CAP_DELTA_TIME
 	}
+	// Renderer.Begin()
 
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
@@ -286,7 +292,8 @@ func JSUpdate(this js.Value, inputs []js.Value) interface{} {
 
 	for timeAccumulation >= FIXED_UPDATE_INTERVAL {
 		timeAccumulation -= FIXED_UPDATE_INTERVAL
-		physics_world.cpSpace.Step(float64(1 / 60.0))
+		// physics_world.cpSpace.Step(float64(1 / 60.0))
+		physics_world.box2dWorld.Step(1/60.0, 8, 3)
 	}
 	return nil
 }
@@ -298,6 +305,7 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 	canvasContext.Call("viewport", 0, 0, currentWidth, currentHeight)
 	setBackgroundColor(current_scene.Background)
 	canvasContext.Call("clear", canvasContext.Get("COLOR_BUFFER_BIT"))
+	canvasContext.Call("clear", canvasContext.Get("DEPTH_BUFFER_BIT"))
 
 	current_scene.OnDraw()
 	RenderQuadTreeContainer.QuadsCount = 0
@@ -307,7 +315,7 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 
 	for _, v := range RenderQuadTreeContainer.Search(ScreenRect).Data {
 		t := v.First
-		v.Second.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, v.Second.texture)
+		v.Second.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.Second.texture)
 		RenderQuadTreeContainer.QuadsCount++
 	}
 	dynmaicQuadInView := DynamicRenderQuadTreeContainer.Search(ScreenRect)
@@ -320,13 +328,14 @@ func JSDraw(this js.Value, inputs []js.Value) interface{} {
 		// t := current_scene.transforms.Get(it.entId)
 		// v.objectType(&Shapes, t.Position, t.Dimensions, v.tint, t.Rotation)
 		// Shapes.DrawFillRectRotated(t.Position, t.Dimensions, it.tint, t.Rotation)
-		v.item.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, v.item.texture)
+		v.item.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.item.texture)
 
 	}
-
 	tempDraw(deltaTime)
 	Sprites.Render()
 	Shapes.Render(&Cam)
+	// Renderer.End()
+	// Renderer.Render()
 	UIShapes.Render(&uiCam)
 	UISprites.Render()
 	return nil

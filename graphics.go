@@ -14,6 +14,7 @@ const SHAPES_SHADER_VERTEX = `#version 300 es
 precision mediump float;
 
 in vec2 coordinates;
+in float z;
 in vec4 colors;
 
 out vec4 vertex_FragColor;
@@ -24,7 +25,7 @@ uniform mat4 view_matrix;
 void main(void) {
 	vec4 global_position = vec4(0.0);
 	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
-	global_position.z = 0.0;
+	global_position.z = z;
 	global_position.w = 1.0;		
 	gl_Position = global_position;
 	
@@ -116,16 +117,17 @@ var (
 	RED   = RGBA8{255, 0, 0, 255}
 )
 
-const VertexSize = 20
+const VertexSize = 24
 
 type Vertex struct {
 	Coordinates Vector2f
+	Z           float32
 	Color       RGBA8
 	UV          Vector2f
 }
 
-func NewVertex(_coords, _uv Vector2f, _color RGBA8) Vertex {
-	return Vertex{_coords, _color, _uv}
+func NewVertex(_coords Vector2f, _z float32, _uv Vector2f, _color RGBA8) Vertex {
+	return Vertex{_coords, _z, _color, _uv}
 }
 
 const vertexByteSize uintptr = unsafe.Sizeof(Vertex{})
@@ -145,10 +147,10 @@ type ShapeBatch struct {
 type Gfx_Shape = int
 
 const (
-	GFX_SHAPE_CIRCLE   = Gfx_Shape(0x000000f1)
-	GFX_SHAPE_RECT     = Gfx_Shape(0x000000f2)
-	GFX_SHAPE_TRIANGLE = Gfx_Shape(0x000000f3)
-	GFX_SHAPE_FILLRECT = Gfx_Shape(0x000000f4)
+	GFX_PARTICLES_SHAPE_CIRCLE   = Gfx_Shape(0x000000f1)
+	GFX_PARTICLES_SHAPE_RECT     = Gfx_Shape(0x000000f2)
+	GFX_PARTICLES_SHAPE_TRIANGLE = Gfx_Shape(0x000000f3)
+	GFX_PARTICLES_SHAPE_FILLRECT = Gfx_Shape(0x000000f4)
 )
 
 func (_shapesB *ShapeBatch) Init() {
@@ -166,12 +168,15 @@ func (_shapesB *ShapeBatch) Init() {
 	canvasContext.Call("enableVertexAttribArray", 0)
 	canvasContext.Call("enableVertexAttribArray", 1)
 	canvasContext.Call("enableVertexAttribArray", 2)
+	canvasContext.Call("enableVertexAttribArray", 3)
 
 	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
-	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
-	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 1, 1, canvasContext.Get("FLOAT"), false, VertexSize, 8)
+	canvasContext.Call("vertexAttribPointer", 2, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 3, 2, canvasContext.Get("FLOAT"), false, VertexSize, 16)
 
 	_shapesB.ibo = canvasContext.Call("createBuffer")
+	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), _shapesB.ibo)
 
 	canvasContext.Call("bindVertexArray", js.Null())
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
@@ -180,16 +185,18 @@ func (_shapesB *ShapeBatch) Init() {
 	canvasContext.Call("disableVertexAttribArray", 0)
 	canvasContext.Call("disableVertexAttribArray", 1)
 	canvasContext.Call("disableVertexAttribArray", 2)
+	canvasContext.Call("disableVertexAttribArray", 3)
 
 	_shapesB.Shader.ParseShader(SHAPES_SHADER_VERTEX, SHAPES_SHADER_FRAGMENT)
 	//_shapesB.Shader.ParseShaderFromFile("shapes.shader")
 	_shapesB.Shader.CreateShaderProgram()
 	_shapesB.Shader.AddAttribute("coordinates")
+	_shapesB.Shader.AddAttribute("z")
 	_shapesB.Shader.AddAttribute("colors")
 	_shapesB.Initialized = true
 }
 
-func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _z float32, _color RGBA8) {
 	//var offset Vector2f = NewVector2f(_sp.LineWidth/2.0, 0.0)
 	var offset Vector2f
 
@@ -203,10 +210,11 @@ func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Subtract(offset), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _from.Add(offset), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _to.Add(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Subtract(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Subtract(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Add(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Add(offset), Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Subtract(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Subtract(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _from.Add(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _to.Add(offset), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -224,31 +232,31 @@ func (_sp *ShapeBatch) DrawLine(_from, _to Vector2f, _color RGBA8) {
 	_sp.NumberOfInstances++
 }
 
-func (_sp *ShapeBatch) DrawRect(_center, _dimensions Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawRect(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8) {
 	offsetX := _dimensions.Scale(0.5).X
 	offsetY := _dimensions.Scale(0.5).Y
 
 	lineDifference := _sp.LineWidth
 
-	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, offsetY).Add(_center), NewVector2f(offsetX+lineDifference, offsetY).Add(_center), _color)
-	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, -offsetY).Add(_center), NewVector2f(offsetX+lineDifference, -offsetY).Add(_center), _color)
-	_sp.DrawLine(NewVector2f(offsetX, offsetY+lineDifference).Add(_center), NewVector2f(offsetX, -offsetY-lineDifference).Add(_center), _color)
-	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center), _color)
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, offsetY).Add(_center), NewVector2f(offsetX+lineDifference, offsetY).Add(_center), _z, _color)
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, -offsetY).Add(_center), NewVector2f(offsetX+lineDifference, -offsetY).Add(_center), _z, _color)
+	_sp.DrawLine(NewVector2f(offsetX, offsetY+lineDifference).Add(_center), NewVector2f(offsetX, -offsetY-lineDifference).Add(_center), _z, _color)
+	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center), _z, _color)
 }
 
-func (_sp *ShapeBatch) DrawRectRotated(_center, _dimensions Vector2f, _color RGBA8, _angle float32) {
+func (_sp *ShapeBatch) DrawRectRotated(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8, _angle float32) {
 	offsetX := _dimensions.Scale(0.5).X
 	offsetY := _dimensions.Scale(0.5).Y
 
 	lineDifference := _sp.LineWidth
 
-	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, offsetY).Add(_center).Rotate(_angle, _center), _color)
-	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), _color)
-	_sp.DrawLine(NewVector2f(offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _color)
-	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _color)
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, offsetY).Add(_center).Rotate(_angle, _center), _z, _color)
+	_sp.DrawLine(NewVector2f(-offsetX-lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX+lineDifference, -offsetY).Add(_center).Rotate(_angle, _center), _z, _color)
+	_sp.DrawLine(NewVector2f(offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _z, _color)
+	_sp.DrawLine(NewVector2f(-offsetX, offsetY+lineDifference).Add(_center).Rotate(_angle, _center), NewVector2f(-offsetX, -offsetY-lineDifference).Add(_center).Rotate(_angle, _center), _z, _color)
 }
 
-func (_sp *ShapeBatch) DrawTriangle(_center, _dimensions Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawTriangle(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8) {
 	const numOfVertices = 3
 
 	pos := [numOfVertices]Vector2f{}
@@ -258,12 +266,12 @@ func (_sp *ShapeBatch) DrawTriangle(_center, _dimensions Vector2f, _color RGBA8)
 	}
 
 	for i := 0; i < numOfVertices-1; i++ {
-		_sp.DrawLine(pos[i], pos[i+1], _color)
+		_sp.DrawLine(pos[i], pos[i+1], _z, _color)
 	}
-	_sp.DrawLine(pos[numOfVertices-1], pos[0], _color)
+	_sp.DrawLine(pos[numOfVertices-1], pos[0], _z, _color)
 }
 
-func (_sp *ShapeBatch) DrawTriangleRotated(_center, _dimensions Vector2f, _color RGBA8, rotation float32) {
+func (_sp *ShapeBatch) DrawTriangleRotated(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8, rotation float32) {
 	numOfVertices := 3
 
 	pos := [3]Vector2f{}
@@ -274,21 +282,22 @@ func (_sp *ShapeBatch) DrawTriangleRotated(_center, _dimensions Vector2f, _color
 	}
 
 	for i := 0; i < numOfVertices-1; i++ {
-		_sp.DrawLine(pos[i], pos[i+1], _color)
+		_sp.DrawLine(pos[i], pos[i+1], _z, _color)
 	}
-	_sp.DrawLine(pos[numOfVertices-1], pos[0], _color)
+	_sp.DrawLine(pos[numOfVertices-1], pos[0], _z, _color)
 }
 
-func (_sp *ShapeBatch) DrawFillTriangle(_center, _dimensions Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawFillTriangle(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8) {
 	offset := _dimensions.Scale(0.5)
 
 	vertsSize := _sp.Vertices.Count()
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y), Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -303,16 +312,17 @@ func (_sp *ShapeBatch) DrawFillTriangle(_center, _dimensions Vector2f, _color RG
 	_sp.NumberOfInstances++
 }
 
-func (_sp *ShapeBatch) DrawFillTriangleRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
+func (_sp *ShapeBatch) DrawFillTriangleRotated(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	offset := _dimensions.Scale(0.5)
 
 	vertsSize := _sp.Vertices.Count()
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(0, offset.Y).Rotate(_rotation, _center), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -328,7 +338,7 @@ func (_sp *ShapeBatch) DrawFillTriangleRotated(_center, _dimensions Vector2f, _c
 	_sp.NumberOfInstances++
 }
 
-func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA8) {
+func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _z, _radius float32, _color RGBA8) {
 	numOfVertices := 16
 
 	pos := [16]Vector2f{}
@@ -338,12 +348,12 @@ func (_sp *ShapeBatch) DrawCircle(_center Vector2f, _radius float32, _color RGBA
 	}
 
 	for i := 0; i < numOfVertices-1; i++ {
-		_sp.DrawLine(pos[i], pos[i+1], _color)
+		_sp.DrawLine(pos[i], pos[i+1], _z, _color)
 	}
-	_sp.DrawLine(pos[numOfVertices-1], pos[0], _color)
+	_sp.DrawLine(pos[numOfVertices-1], pos[0], _z, _color)
 }
 
-func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawFillRect(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8) {
 	offset := _dimensions.Scale(0.5)
 
 	vertsSize := _sp.Vertices.Count()
@@ -351,10 +361,12 @@ func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8)
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset), Color: _color})
+
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -374,17 +386,18 @@ func (_sp *ShapeBatch) DrawFillRect(_center, _dimensions Vector2f, _color RGBA8)
 
 }
 
-func (_sp *ShapeBatch) DrawFillRect_Rect(_rect Rect, _color RGBA8) {
+func (_sp *ShapeBatch) DrawFillRect_Rect(_rect Rect, _z float32, _color RGBA8) {
 
 	vertsSize := _sp.Vertices.Count()
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position, Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position.AddXY(0.0, _rect.Size.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Position.AddXY(_rect.Size.X, 0), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _rect.Size, Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position, Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(0.0, _rect.Size.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(_rect.Size.X, 0), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Size, Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position, Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(0.0, _rect.Size.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Position.AddXY(_rect.Size.X, 0), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _rect.Size, Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -404,7 +417,7 @@ func (_sp *ShapeBatch) DrawFillRect_Rect(_rect Rect, _color RGBA8) {
 
 }
 
-func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color RGBA8) {
+func (_sp *ShapeBatch) DrawFillRectBottom(_bottom Vector2f, _z float32, _dimensions Vector2f, _color RGBA8) {
 	offset := NewVector2f(_dimensions.X/2.0, 0.0)
 
 	vertsSize := _sp.Vertices.Count()
@@ -412,10 +425,11 @@ func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color 
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _bottom.Add(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Subtract(offset), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Add(offset), Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Subtract(offset), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, -offset.Y), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.Add(offset), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -435,7 +449,7 @@ func (_sp *ShapeBatch) DrawFillRectBottom(_bottom, _dimensions Vector2f, _color 
 
 }
 
-func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color RGBA8, _rotation float32) {
+func (_sp *ShapeBatch) DrawFillRectRotated(_center Vector2f, _z float32, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	offset := _dimensions.Scale(0.5)
 
 	vertsSize := _sp.Vertices.Count()
@@ -443,10 +457,11 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
 	// _sp.Vertices = append(_sp.Vertices, Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Color: _color})
-	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Color: _color})
+	_new_z := remapZForView(_z)
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Subtract(offset).Rotate(_rotation, _center), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.SubtractXY(offset.X, -offset.Y).Rotate(_rotation, _center), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.AddXY(offset.X, -offset.Y).Rotate(_rotation, _center), Z: _new_z, Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _center.Add(offset).Rotate(_rotation, _center), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -466,21 +481,22 @@ func (_sp *ShapeBatch) DrawFillRectRotated(_center, _dimensions Vector2f, _color
 
 }
 
-func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom, _dimensions Vector2f, _color RGBA8, _rotation float32) {
+func (_sp *ShapeBatch) DrawFillRectBottomRotated(_bottom Vector2f, _z float32, _dimensions Vector2f, _color RGBA8, _rotation float32) {
 	// offset := NewVector2f(_dimensions.X/2.0, 0.0)
 	offset := _dimensions.Scale(0.5)
 
 	vertsSize := _sp.Vertices.Count()
+	_new_z := remapZForView(_z)
 	//Bottom Left
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, 0.0).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, 0.0).Rotate(_rotation, _bottom), Z: _new_z, Color: _color})
 	//Top Left
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y*2).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.SubtractXY(offset.X, -offset.Y*2).Rotate(_rotation, _bottom), Z: _new_z, Color: _color})
 
 	//Bottom Right
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, 0).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, 0).Rotate(_rotation, _bottom), Z: _new_z, Color: _color})
 
 	//Top Right
-	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, offset.Y*2.0).Rotate(_rotation, _bottom), Color: _color})
+	_sp.Vertices.PushBack(Vertex{Coordinates: _bottom.AddXY(offset.X, offset.Y*2.0).Rotate(_rotation, _bottom), Z: _new_z, Color: _color})
 
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize))
 	// _sp.Indices = append(_sp.Indices, int32(vertsSize+1))
@@ -505,8 +521,6 @@ func (_sp *ShapeBatch) finalize() {
 		return
 	}
 
-	canvasContext.Call("bindVertexArray", _sp.vao)
-
 	jsVerts := vertexBufferToJsVertexBuffer(_sp.Vertices.Data)
 	jsElem := int32BufferToJsInt32Buffer(_sp.Indices.Data)
 
@@ -516,19 +530,13 @@ func (_sp *ShapeBatch) finalize() {
 	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), _sp.ibo)
 	canvasContext.Call("bufferData", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), jsElem, canvasContext.Get("STATIC_DRAW"))
 
-	canvasContext.Call("enableVertexAttribArray", 0)
-	canvasContext.Call("enableVertexAttribArray", 1)
-	canvasContext.Call("enableVertexAttribArray", 2)
-
-	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
-	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
-	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
-
-	canvasContext.Call("bindVertexArray", js.Null())
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
 	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), js.Null())
 
 	_sp.NumberOfElements = _sp.Indices.Count()
+
+	jsVerts.Set("delete", nil)
+	jsElem.Set("delete", nil)
 
 	_sp.Vertices.Clear()
 	_sp.Indices.Clear()
@@ -559,10 +567,10 @@ func (_sp *ShapeBatch) Render(cam *Camera2D) {
 
 	viewmatrix_loc := canvasContext.Call("getUniformLocation", _sp.Shader.ShaderProgramID, "view_matrix")
 	canvasContext.Call("uniformMatrix4fv", viewmatrix_loc, false, viewMatrixJS)
-	canvasContext.Call("bindVertexArray", _sp.vao)
 
+	canvasContext.Call("bindVertexArray", _sp.vao)
+	canvasContext.Call("bindBuffer", canvasContext.Get("ELEMENT_ARRAY_BUFFER"), _sp.ibo)
 	canvasContext.Call("drawElements", canvasContext.Get("TRIANGLES"), _sp.NumberOfElements, canvasContext.Get("UNSIGNED_INT"), 0)
-	// canvasContext.Call("drawElementsInstanced", canvasContext.Get("TRIANGLES"), 6, canvasContext.Get("UNSIGNED_INT"), 0, _sp.NumberOfInstances)
 	_sp.NumberOfInstances = 0
 	UnuseShader()
 }
@@ -578,6 +586,7 @@ const SPRITES_SHADER_VERTEX = `#version 300 es
 precision mediump float;
 
 in vec2 coordinates;
+in float z;
 in vec4 colors;
 in vec2 uv;
 
@@ -590,7 +599,7 @@ uniform mat4 view_matrix;
 void main(void) {
 	vec4 global_position = vec4(0.0);
 	global_position = view_matrix * vec4(coordinates, 0.0, 1.0);
-	global_position.z = 0.0;
+	global_position.z = z;
 	global_position.w = 1.0;		
 	gl_Position = global_position;
 	
@@ -627,30 +636,30 @@ type SpriteGlyph struct {
 	texture                                    *Texture2D
 }
 
-func NewSpriteGlyph(_pos, _dimensions, _uv1 Vector2f, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) SpriteGlyph {
+func NewSpriteGlyph(_pos, _dimensions, _uv1 Vector2f, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) SpriteGlyph {
 	var tempGlyph SpriteGlyph
 
 	halfDim := _dimensions.Scale(0.5)
 
-	tempGlyph.bottomleft = NewVertex(_pos.Subtract(halfDim), NewVector2f(_uv1.X, _uv2.Y), _tint)
-	tempGlyph.topleft = NewVertex(_pos.Add(NewVector2f(-halfDim.X, halfDim.Y)), _uv1, _tint)
-	tempGlyph.topright = NewVertex(_pos.Add(halfDim), NewVector2f(_uv2.X, _uv1.Y), _tint)
-	tempGlyph.bottomright = NewVertex(_pos.Add(NewVector2f(halfDim.X, -halfDim.Y)), _uv2, _tint)
+	tempGlyph.bottomleft = NewVertex(_pos.Subtract(halfDim), _z, NewVector2f(_uv1.X, _uv2.Y), _tint)
+	tempGlyph.topleft = NewVertex(_pos.Add(NewVector2f(-halfDim.X, halfDim.Y)), _z, _uv1, _tint)
+	tempGlyph.topright = NewVertex(_pos.Add(halfDim), _z, NewVector2f(_uv2.X, _uv1.Y), _tint)
+	tempGlyph.bottomright = NewVertex(_pos.Add(NewVector2f(halfDim.X, -halfDim.Y)), _z, _uv2, _tint)
 
 	tempGlyph.texture = _texture
 
 	return tempGlyph
 }
 
-func NewSpriteGlyphRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) SpriteGlyph {
+func NewSpriteGlyphRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8, _rotation float32) SpriteGlyph {
 	var tempGlyph SpriteGlyph
 
 	halfDim := _dimensions.Scale(0.5)
 
-	tempGlyph.bottomleft = NewVertex(_pos.Subtract(halfDim).Rotate(_rotation, _pos), NewVector2f(_uv1.X, _uv2.Y), _tint)
-	tempGlyph.topleft = NewVertex(_pos.Add(NewVector2f(-halfDim.X, halfDim.Y)).Rotate(_rotation, _pos), _uv1, _tint)
-	tempGlyph.topright = NewVertex(_pos.Add(halfDim).Rotate(_rotation, _pos), NewVector2f(_uv2.X, _uv1.Y), _tint)
-	tempGlyph.bottomright = NewVertex(_pos.Add(NewVector2f(halfDim.X, -halfDim.Y)).Rotate(_rotation, _pos), _uv2, _tint)
+	tempGlyph.bottomleft = NewVertex(_pos.Subtract(halfDim).Rotate(_rotation, _pos), _z, NewVector2f(_uv1.X, _uv2.Y), _tint)
+	tempGlyph.topleft = NewVertex(_pos.Add(NewVector2f(-halfDim.X, halfDim.Y)).Rotate(_rotation, _pos), _z, _uv1, _tint)
+	tempGlyph.topright = NewVertex(_pos.Add(halfDim).Rotate(_rotation, _pos), _z, NewVector2f(_uv2.X, _uv1.Y), _tint)
+	tempGlyph.bottomright = NewVertex(_pos.Add(NewVector2f(halfDim.X, -halfDim.Y)).Rotate(_rotation, _pos), _z, _uv2, _tint)
 
 	tempGlyph.texture = _texture
 
@@ -698,10 +707,12 @@ func (self *SpriteBatch) Init(_shader_path string) {
 	canvasContext.Call("enableVertexAttribArray", 0)
 	canvasContext.Call("enableVertexAttribArray", 1)
 	canvasContext.Call("enableVertexAttribArray", 2)
+	canvasContext.Call("enableVertexAttribArray", 3)
 
 	canvasContext.Call("vertexAttribPointer", 0, 2, canvasContext.Get("FLOAT"), false, VertexSize, 0)
-	canvasContext.Call("vertexAttribPointer", 1, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 8)
-	canvasContext.Call("vertexAttribPointer", 2, 2, canvasContext.Get("FLOAT"), false, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 1, 1, canvasContext.Get("FLOAT"), false, VertexSize, 8)
+	canvasContext.Call("vertexAttribPointer", 2, 4, canvasContext.Get("UNSIGNED_BYTE"), true, VertexSize, 12)
+	canvasContext.Call("vertexAttribPointer", 3, 2, canvasContext.Get("FLOAT"), false, VertexSize, 16)
 
 	canvasContext.Call("bindVertexArray", js.Null())
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), js.Null())
@@ -709,6 +720,7 @@ func (self *SpriteBatch) Init(_shader_path string) {
 	canvasContext.Call("disableVertexAttribArray", 0)
 	canvasContext.Call("disableVertexAttribArray", 1)
 	canvasContext.Call("disableVertexAttribArray", 2)
+	canvasContext.Call("disableVertexAttribArray", 3)
 
 	if _shader_path == "" {
 		self.shader.ParseShader(SPRITES_SHADER_VERTEX, SPRITES_SHADER_FRAGMENT)
@@ -722,40 +734,45 @@ func (self *SpriteBatch) Init(_shader_path string) {
 
 }
 
-func (self *SpriteBatch) DrawSprite(_center, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, _dimensions, _uv1, _uv2, _texture, _tint))
+func remapZForView(_z float32) float32 {
+	return MapFloat32(_z, -1, 1000, -0.999, 0.999)
 }
 
-func (self *SpriteBatch) DrawSpriteOrigin(_center, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, _texture, _tint))
-
-}
-func (self *SpriteBatch) DrawSpriteOriginScaled(_center, _uv1, _uv2 Vector2f, _scale float32, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale), _uv1, _uv2, _texture, _tint))
-}
-func (self *SpriteBatch) DrawSpriteBottomLeft(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, _texture, _tint))
-}
-func (self *SpriteBatch) DrawSpriteBottomLeftRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, _texture, _tint, _rotation))
-}
-func (self *SpriteBatch) DrawSpriteBottomRight(_pos, _dimensions, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.AddXY(-_dimensions.Scale(0.5).X, _dimensions.Scale(0.5).Y), _dimensions, _uv1, _uv2, _texture, _tint))
-}
-func (self *SpriteBatch) DrawSpriteBottomLeftOrigin(_pos, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Subtract(NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(0.5)), NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, _texture, _tint))
-
+func (self *SpriteBatch) DrawSprite(_center, _dimensions, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, _dimensions, _uv1, _uv2, remapZForView(_z), _texture, _tint))
 }
 
-func (self *SpriteBatch) DrawSpriteOriginRotated(_center, _uv1, _uv2 Vector2f, _texture *Texture2D, _tint RGBA8, _rotation float32) {
-	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, _texture, _tint, _rotation))
+func (self *SpriteBatch) DrawSpriteOrigin(_center, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, remapZForView(_z), _texture, _tint))
+
+}
+func (self *SpriteBatch) DrawSpriteOriginScaled(_center, _uv1, _uv2 Vector2f, _scale float32, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale), _uv1, _uv2, remapZForView(_z), _texture, _tint))
+}
+func (self *SpriteBatch) DrawSpriteBottomLeft(_pos, _dimensions, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, remapZForView(_z), _texture, _tint))
+}
+func (self *SpriteBatch) DrawSpriteBottomLeftRotated(_pos, _dimensions, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_pos.Add(_dimensions.Scale(0.5)), _dimensions, _uv1, _uv2, remapZForView(_z), _texture, _tint, _rotation))
+}
+func (self *SpriteBatch) DrawSpriteBottomRight(_pos, _dimensions, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.AddXY(-_dimensions.Scale(0.5).X, _dimensions.Scale(0.5).Y), _dimensions, _uv1, _uv2, remapZForView(_z), _texture, _tint))
+}
+func (self *SpriteBatch) DrawSpriteBottomLeftOrigin(_pos, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyph(_pos.Subtract(NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(0.5)), NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, remapZForView(_z), _texture, _tint))
+
 }
 
-func (self *SpriteBatch) DrawSpriteOriginScaledRotated(_center, _uv1, _uv2 Vector2f, _scale float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+func (self *SpriteBatch) DrawSpriteOriginRotated(_center, _uv1, _uv2 Vector2f, _z float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, NewVector2f(float32(_texture.Width), float32(_texture.Height)), _uv1, _uv2, remapZForView(_z), _texture, _tint, _rotation))
+}
+
+func (self *SpriteBatch) DrawSpriteOriginScaledRotated(_center, _uv1, _uv2 Vector2f, _scale float32, _z float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
 	_spriteDims := NewVector2f(float32(_texture.Width), float32(_texture.Height)).Scale(_scale)
-	if self.RenderCam.IsBoxInView(_center, _spriteDims) {
-		self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, _spriteDims, _uv1, _uv2, _texture, _tint, _rotation))
-	}
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, _spriteDims, _uv1, _uv2, remapZForView(_z), _texture, _tint, _rotation))
+}
+func (self *SpriteBatch) DrawSpriteOriginScaledDimRotated(_center, _dims, _uv1, _uv2 Vector2f, _scale float32, _z float32, _texture *Texture2D, _tint RGBA8, _rotation float32) {
+	self.spriteGlyphs = append(self.spriteGlyphs, NewSpriteGlyphRotated(_center, _dims.Scale(_scale), _uv1, _uv2, remapZForView(_z), _texture, _tint, _rotation))
 }
 
 func (self *SpriteBatch) finalize() {
@@ -861,27 +878,31 @@ func (self *SpriteBatch) createRenderBatches() {
 
 }
 
-type renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D)
+type renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D)
 
 var (
-	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
-		sh.DrawFillRectRotated(v1, v2, c, r)
+	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		sh.DrawFillRectRotated(v1, z, v2, c, r)
+		// Renderer.InsertQuad(Vector2fZero, 0.0, RED)
 	}
-	TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
-		sh.DrawFillTriangleRotated(v1, v2, c, r)
+	TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		sh.DrawFillTriangleRotated(v1, z, v2, c, r)
 	}
-	CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
-		sh.DrawCircle(v1, v2.X, c)
+	CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		sh.DrawCircle(v1, z, v2.X, c)
 	}
-	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
-		sh.DrawLine(v1, v1.Add(v2), c)
+	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		sh.DrawLine(v1, v1.Add(v2), z, c)
 	}
-	SPRITE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, t *Texture2D) {
-		// sp.DrawSpriteOriginScaledRotated(v1, v3, v4, v2.X, t, c, r)
+	SPRITE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		// sp.DrawSpriteOriginScaledRotated(v1, v3, v4, v2.X, z, t, c, r)
 		// Sprites.DrawSpriteBottomLeft(v.Position, v.Dimensions, v.UV1, v.UV2, &tmc.tileset.texture, WHITE)
 		// sp.DrawSpriteBottomLeft(v1, v2, v3, v4, t, c)
-		sp.DrawSpriteBottomLeftRotated(v1, v2, v3, v4, t, c, r)
+		sp.DrawSpriteBottomLeftRotated(v1, v2, v3, v4, z, t, c, r)
 
+	}
+	SPRITECENTER_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+		sp.DrawSpriteOriginScaledDimRotated(v1, v2, v3, v4, 1.0, z, t, c, r)
 	}
 )
 
@@ -898,84 +919,81 @@ func newRenderObject(entId EntId, _objectType renderObjectFuncType) RenderObject
 	}
 }
 
-func NewQuadComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillRectRenderComponent {
+func NewQuadComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) FillRectRenderComponent {
 	renderObj := newRenderObject(entId, QUAD_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[VisualTransform](thisScene, entId)
+	renderObj.entId = entId
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
-
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 	} else {
 		// _index = DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
-		DynamicRenderQuadTreeContainer.InsertWithIndex(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions}, int64(entId))
+		DynamicRenderQuadTreeContainer.InsertWithIndex(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions}, int64(entId))
 
 	}
 
-	return FillRectRenderComponent{
-		Tint:          tint,
-		QuadTreeIndex: int64(entId),
-	}
+	return FillRectRenderComponent{}
 }
 
-func NewTriangleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) FillTriangleRenderComponent {
+func NewTriangleComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) FillTriangleRenderComponent {
 	renderObj := newRenderObject(entId, TRI_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 
 	} else {
-		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 
 	}
 
-	return FillTriangleRenderComponent{
-		Tint: tint,
-	}
+	return FillTriangleRenderComponent{}
 }
 
-func NewCircleComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) CircleRenderComponent {
+func NewCircleComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) CircleRenderComponent {
 	renderObj := newRenderObject(entId, CIRCLE_RENDEROBJECTTYPEFUNC)
-	t := GetComponentPtr[VisualTransform](thisScene, entId)
-	t.Dimensions.X /= 2.0
-	t.Dimensions.Y /= 2.0
+	vt.Dimensions.X /= 2.0
+	vt.Dimensions.Y /= 2.0
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{*t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 
 	} else {
-		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 	}
 
-	return CircleRenderComponent{
-		Tint: tint,
-	}
+	return CircleRenderComponent{}
 }
 
-func NewLineComponent(thisScene *Scene, entId EntId, tint RGBA8, static bool) LineRenderComponent {
+func NewLineComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) LineRenderComponent {
 	renderObj := newRenderObject(entId, LINE_RENDEROBJECTTYPEFUNC)
-	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position, Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position, Size: vt.Dimensions})
 
 	} else {
-		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position, Size: t.Dimensions})
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position, Size: vt.Dimensions})
 	}
 
-	return LineRenderComponent{
-		Tint: tint,
-	}
+	return LineRenderComponent{}
 }
 
-func NewSpriteComponent(thisScene *Scene, entId EntId, texture *Texture2D, tint RGBA8, static bool) SpriteComponent {
+func NewSpriteComponentBL(thisScene *Scene, entId EntId, vt VisualTransform, texture *Texture2D, static bool) SpriteComponent {
 	renderObj := newRenderObject(entId, SPRITE_RENDEROBJECTTYPEFUNC)
 	renderObj.texture = texture
-	t, _ := GetComponent[VisualTransform](thisScene, entId)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(.5)), Size: t.Dimensions})
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
 
 	} else {
-		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 	}
 
-	return SpriteComponent{
-		Tint: tint,
+	return SpriteComponent{}
+}
+
+func NewSpriteComponent(thisScene *Scene, entId EntId, vt VisualTransform, texture *Texture2D, static bool) SpriteComponent {
+	renderObj := newRenderObject(entId, SPRITECENTER_RENDEROBJECTTYPEFUNC)
+	renderObj.texture = texture
+	if static {
+		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
+
+	} else {
+		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 	}
+
+	return SpriteComponent{}
 }
