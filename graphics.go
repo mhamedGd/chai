@@ -7,6 +7,9 @@ import (
 	"math/rand"
 	"syscall/js"
 	"unsafe"
+
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
 )
 
 const SHAPES_SHADER_VERTEX = `#version 300 es
@@ -135,8 +138,8 @@ const vertexByteSize uintptr = unsafe.Sizeof(Vertex{})
 type ShapeBatch struct {
 	vao               js.Value
 	vbo, ibo          js.Value
-	Vertices          List[Vertex]
-	Indices           List[int32]
+	Vertices          customtypes.List[Vertex]
+	Indices           customtypes.List[int32]
 	NumberOfElements  int
 	NumberOfInstances int
 	Shader            ShaderProgram
@@ -156,8 +159,8 @@ const (
 func (_shapesB *ShapeBatch) Init() {
 	_shapesB.LineWidth = 50
 
-	_shapesB.Vertices = NewList[Vertex]()
-	_shapesB.Indices = NewList[int32]()
+	_shapesB.Vertices = customtypes.NewList[Vertex]()
+	_shapesB.Indices = customtypes.NewList[int32]()
 
 	_shapesB.vao = canvasContext.Call("createVertexArray")
 	canvasContext.Call("bindVertexArray", _shapesB.vao)
@@ -899,6 +902,7 @@ var (
 		// Sprites.DrawSpriteBottomLeft(v.Position, v.Dimensions, v.UV1, v.UV2, &tmc.tileset.texture, WHITE)
 		// sp.DrawSpriteBottomLeft(v1, v2, v3, v4, t, c)
 		sp.DrawSpriteBottomLeftRotated(v1, v2, v3, v4, z, t, c, r)
+		// Renderer.InsertQuad(v1, 0.0, WHITE)
 
 	}
 	SPRITECENTER_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
@@ -923,7 +927,7 @@ func NewQuadComponent(thisScene *Scene, entId EntId, vt VisualTransform, static 
 	renderObj := newRenderObject(entId, QUAD_RENDEROBJECTTYPEFUNC)
 	renderObj.entId = entId
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 	} else {
 		// _index = DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: t.Position.Subtract(t.Dimensions.Scale(0.5)), Size: t.Dimensions})
 		DynamicRenderQuadTreeContainer.InsertWithIndex(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions}, int64(entId))
@@ -936,7 +940,7 @@ func NewQuadComponent(thisScene *Scene, entId EntId, vt VisualTransform, static 
 func NewTriangleComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) FillTriangleRenderComponent {
 	renderObj := newRenderObject(entId, TRI_RENDEROBJECTTYPEFUNC)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
@@ -951,7 +955,7 @@ func NewCircleComponent(thisScene *Scene, entId EntId, vt VisualTransform, stati
 	vt.Dimensions.X /= 2.0
 	vt.Dimensions.Y /= 2.0
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
@@ -963,7 +967,7 @@ func NewCircleComponent(thisScene *Scene, entId EntId, vt VisualTransform, stati
 func NewLineComponent(thisScene *Scene, entId EntId, vt VisualTransform, static bool) LineRenderComponent {
 	renderObj := newRenderObject(entId, LINE_RENDEROBJECTTYPEFUNC)
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position, Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position, Size: vt.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position, Size: vt.Dimensions})
@@ -976,7 +980,7 @@ func NewSpriteComponentBL(thisScene *Scene, entId EntId, vt VisualTransform, tex
 	renderObj := newRenderObject(entId, SPRITE_RENDEROBJECTTYPEFUNC)
 	renderObj.texture = texture
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})
@@ -989,7 +993,7 @@ func NewSpriteComponent(thisScene *Scene, entId EntId, vt VisualTransform, textu
 	renderObj := newRenderObject(entId, SPRITECENTER_RENDEROBJECTTYPEFUNC)
 	renderObj.texture = texture
 	if static {
-		RenderQuadTreeContainer.Insert(Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
+		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{vt, renderObj}, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(.5)), Size: vt.Dimensions})
 
 	} else {
 		DynamicRenderQuadTreeContainer.Insert(renderObj, Rect{Position: vt.Position.Subtract(vt.Dimensions.Scale(0.5)), Size: vt.Dimensions})

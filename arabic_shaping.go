@@ -16,6 +16,8 @@ import (
 
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
+
+	. "github.com/mhamedGd/chai/math"
 )
 
 // letterGroup represents the letter and bounding letters

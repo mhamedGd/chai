@@ -1,7 +1,9 @@
 package chai
 
 import (
+	"github.com/mhamedGd/chai/customtypes"
 	"github.com/mhamedGd/chai/ecs"
+	. "github.com/mhamedGd/chai/math"
 )
 
 var current_scene *Scene
@@ -36,25 +38,25 @@ func Iterate5[A, B, C, D, E any](f func(EntId, *A, *B, *C, *D, *E)) {
 type Scene struct {
 	Background     RGBA8
 	Ecs_World      *ecs.World
-	start_systems  List[func(*Scene)]
-	update_systems List[func(*Scene, float32)]
-	render_systems List[func(*Scene, float32)]
-	tags           Map[string, List[EntId]]
+	start_systems  customtypes.List[func(*Scene)]
+	update_systems customtypes.List[func(*Scene, float32)]
+	render_systems customtypes.List[func(*Scene, float32)]
+	tags           customtypes.Map[string, customtypes.List[EntId]]
 }
 
 func NewScene() Scene {
 	return Scene{
 		Ecs_World:      ecs.NewWorld(),
-		start_systems:  NewList[func(*Scene)](),
-		update_systems: NewList[func(*Scene, float32)](),
-		render_systems: NewList[func(*Scene, float32)](),
-		tags:           NewMap[string, List[EntId]](),
+		start_systems:  customtypes.NewList[func(*Scene)](),
+		update_systems: customtypes.NewList[func(*Scene, float32)](),
+		render_systems: customtypes.NewList[func(*Scene, float32)](),
+		tags:           customtypes.NewMap[string, customtypes.List[EntId]](),
 	}
 }
 
 func (scene *Scene) AddTag(ent_id EntId, tag_name string) {
 	if !scene.tags.Has(tag_name) {
-		scene.tags.Insert(tag_name, NewList[EntId]())
+		scene.tags.Insert(tag_name, customtypes.NewList[EntId]())
 	}
 
 	tags := scene.tags.Get(tag_name)

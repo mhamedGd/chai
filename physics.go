@@ -2,6 +2,8 @@ package chai
 
 import (
 	box2d "github.com/mhamedGd/chai-box2d"
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
 )
 
 const SHAPE_RECTBODY = 0
@@ -83,24 +85,24 @@ func newPhysicsWorld(_gravity Vector2f) PhysicsWorld {
 type DynamicBodyComponent struct {
 	b2Body           *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   ChaiEvent1[CollisionBox2D]
+	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
+	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
 	settings         DynamicBodySettings
 }
 
 type StaticBodyComponent struct {
 	b2Body           *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   ChaiEvent1[CollisionBox2D]
+	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
+	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
 	settings         StaticBodySettings
 }
 
 type KinematicBodyComponent struct {
 	b2Body           *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   ChaiEvent1[CollisionBox2D]
+	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
+	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
 	settings         KinematicBodySettings
 }
 
@@ -250,7 +252,7 @@ type RaycastHit struct {
 var LineCast func(Vector2f, Vector2f, uint16) RaycastHit
 var RayCast func(_origin Vector2f, _direction Vector2f, _distance float32, _physics_layer uint16) RaycastHit
 
-var OverlapBox func(Rect, uint16) (List[EntId], bool)
+var OverlapBox func(Rect, uint16) (customtypes.List[EntId], bool)
 
 // /// ECS Systems Relating to Physics ///////////////
 // /////////////////////////////////////////////////////////
@@ -336,8 +338,8 @@ func DynamicBodySystem(_this_scene *Scene, _dt float32) {
 // 	cpShape          *cp.Shape
 // 	RBSettings       *RigidBodySettings
 // 	OwnerEntityId    EntId
-// 	OnCollisionBegin ChaiEvent1[Collision]
-// 	OnCollisionEnd   ChaiEvent1[Collision]
+// 	OnCollisionBegin customtypes.ChaiEvent1[Collision]
+// 	OnCollisionEnd   customtypes.ChaiEvent1[Collision]
 // 	Offset           Vector2f
 // }
 
@@ -407,8 +409,8 @@ func DynamicBodySystem(_this_scene *Scene, _dt float32) {
 // 		cpShape:          shape,
 // 		RBSettings:       rbSettings,
 // 		OwnerEntityId:    entityId,
-// 		OnCollisionBegin: ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
-// 		OnCollisionEnd:   ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
+// 		OnCollisionBegin: customtypes.ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
+// 		OnCollisionEnd:   customtypes.ChaiEvent1[Collision]{listeners: NewList[EventFunc1[Collision]]()},
 // 		Offset:           rbSettings.Offset,
 // 	}
 // }

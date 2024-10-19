@@ -1,4 +1,10 @@
-package chai
+package customtypes
+
+import (
+	"fmt"
+
+	. "github.com/mhamedGd/chai/math"
+)
 
 type Pair[A, B any] struct {
 	First  A
@@ -441,7 +447,7 @@ func (stQtc *DynamicQuadTreeContainer[T]) RemoveWithIndex(_item_index int64) {
 
 	searchedItem := stQtc.searchIndex(_item_index)
 	if searchedItem == nil {
-		LogF("Didn't find object")
+		fmt.Printf("Didn't find object\n")
 		return
 	}
 

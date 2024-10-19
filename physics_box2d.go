@@ -2,6 +2,8 @@ package chai
 
 import (
 	box2d "github.com/mhamedGd/chai-box2d"
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
 )
 
 func b2VecToVec2f(_b2Vec box2d.B2Vec2) Vector2f {
@@ -31,8 +33,8 @@ func newDynamicBodyBox2d(_entity_id EntId, _visual_transform VisualTransform, _d
 	return DynamicBodyComponent{
 		b2Body:           body2d,
 		OwnerEntId:       _entity_id,
-		OnCollisionBegin: NewChaiEvent1[CollisionBox2D](),
-		OnCollisionEnd:   NewChaiEvent1[CollisionBox2D](),
+		OnCollisionBegin: customtypes.NewChaiEvent1[CollisionBox2D](),
+		OnCollisionEnd:   customtypes.NewChaiEvent1[CollisionBox2D](),
 		settings:         *_db_settings,
 	}
 }
@@ -48,8 +50,8 @@ func newStaticBodyBox2d(_entity_id EntId, _visual_transform VisualTransform, _sb
 	return StaticBodyComponent{
 		b2Body:           body2d,
 		OwnerEntId:       _entity_id,
-		OnCollisionBegin: NewChaiEvent1[CollisionBox2D](),
-		OnCollisionEnd:   NewChaiEvent1[CollisionBox2D](),
+		OnCollisionBegin: customtypes.NewChaiEvent1[CollisionBox2D](),
+		OnCollisionEnd:   customtypes.NewChaiEvent1[CollisionBox2D](),
 		settings:         *_sb_settings,
 	}
 }
@@ -65,8 +67,8 @@ func newKinematicBodyBox2d(_entity_id EntId, _visual_transform VisualTransform, 
 	return KinematicBodyComponent{
 		b2Body:           body2d,
 		OwnerEntId:       _entity_id,
-		OnCollisionBegin: NewChaiEvent1[CollisionBox2D](),
-		OnCollisionEnd:   NewChaiEvent1[CollisionBox2D](),
+		OnCollisionBegin: customtypes.NewChaiEvent1[CollisionBox2D](),
+		OnCollisionEnd:   customtypes.NewChaiEvent1[CollisionBox2D](),
 		settings:         *_kb_settings,
 	}
 }
@@ -302,7 +304,7 @@ func (callback *boxCastQueryCallback) ReportFixture(fixture *box2d.B2Fixture) bo
 	return true
 }
 
-func overlapBoxBox2d(_rect Rect, _physics_layer uint16) (List[EntId], bool) {
+func overlapBoxBox2d(_rect Rect, _physics_layer uint16) (customtypes.List[EntId], bool) {
 	aabb := box2d.MakeB2AABB()
 	aabb.LowerBound.Set(float64(_rect.Position.X)-float64(_rect.Size.X)/2.0, float64(_rect.Position.Y)-float64(_rect.Size.Y)/2.0)
 	aabb.UpperBound.Set(float64(_rect.Position.X)+float64(_rect.Size.X)/2.0, float64(_rect.Position.Y)+float64(_rect.Size.Y)/2.0)
@@ -311,7 +313,7 @@ func overlapBoxBox2d(_rect Rect, _physics_layer uint16) (List[EntId], bool) {
 
 	physics_world.box2dWorld.QueryAABB(bodiesQuery.ReportFixture, aabb)
 
-	ent_ids := NewList[EntId]()
+	ent_ids := customtypes.NewList[EntId]()
 	for _, b := range bodiesQuery.FoundBodies {
 		if b.GetFixtureList().GetFilterData().CategoryBits&_physics_layer == 0 {
 			continue

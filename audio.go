@@ -2,6 +2,8 @@ package chai
 
 import (
 	"syscall/js"
+
+	"github.com/mhamedGd/chai/customtypes"
 )
 
 var audioContext js.Value
@@ -102,12 +104,12 @@ type AudioSourceData struct {
 }
 
 type AudioSourceComponent struct {
-	audioSourceData Map[string, AudioSourceData]
+	audioSourceData customtypes.Map[string, AudioSourceData]
 }
 
 func NewAudioSourceComponent() AudioSourceComponent {
 	return AudioSourceComponent{
-		audioSourceData: NewMap[string, AudioSourceData](),
+		audioSourceData: customtypes.NewMap[string, AudioSourceData](),
 	}
 }
 

@@ -117,7 +117,7 @@ func loadWhiteTexture() Texture2D {
 	return tempTexture
 }
 
-func LoadPng(_filePath string, _textureSettings *TextureSettings) Texture2D {
+func LoadPng(_filePath string, _textureSettings TextureSettings) Texture2D {
 
 	var tempTexture Texture2D
 
@@ -161,7 +161,7 @@ func LoadPng(_filePath string, _textureSettings *TextureSettings) Texture2D {
 	return tempTexture
 }
 
-func LoadPngByTileset(_filePath string, _textureSettings *TextureSettings, _spritewidth, _spriteheight int) Texture2D {
+func LoadPngByTileset(_filePath string, _textureSettings TextureSettings, _spritewidth, _spriteheight int) Texture2D {
 
 	var tempTexture Texture2D
 	tempTexture.spwidth = _spritewidth

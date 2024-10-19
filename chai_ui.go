@@ -1,11 +1,16 @@
 package chai
 
+import (
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
+)
+
 type UIInteractionsComponent struct {
 	InteractionBox Vector2f
-	OnCursorEnter  ChaiEvent1[EntId]
-	OnCursorExit   ChaiEvent1[EntId]
-	OnClick        ChaiEvent1[EntId]
-	OnRelease      ChaiEvent1[EntId]
+	OnCursorEnter  customtypes.ChaiEvent1[EntId]
+	OnCursorExit   customtypes.ChaiEvent1[EntId]
+	OnClick        customtypes.ChaiEvent1[EntId]
+	OnRelease      customtypes.ChaiEvent1[EntId]
 	justEntered    bool
 	Disabled       bool
 }

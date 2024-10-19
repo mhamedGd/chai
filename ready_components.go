@@ -1,6 +1,10 @@
 package chai
 
-import "github.com/mhamedGd/chai/ecs"
+import (
+	"github.com/mhamedGd/chai/customtypes"
+	"github.com/mhamedGd/chai/ecs"
+	. "github.com/mhamedGd/chai/math"
+)
 
 type VisualTransform struct {
 	Position   Vector2f
@@ -111,7 +115,7 @@ type TweenValue[T any] struct {
 }
 
 type AnimationComponent[T any] struct {
-	Animations Map[string, *TweenAnimation[T]]
+	Animations customtypes.Map[string, *TweenAnimation[T]]
 }
 
 func (a *AnimationComponent[T]) Play(animationName string) {
@@ -144,30 +148,30 @@ func (a *AnimationComponent[T]) StopAll() {
 
 func NewAnimationComponentInt() AnimationComponent[int] {
 	return AnimationComponent[int]{
-		Animations: NewMap[string, *TweenAnimation[int]](),
+		Animations: customtypes.NewMap[string, *TweenAnimation[int]](),
 	}
 }
 
 func NewAnimationComponentFloat32() AnimationComponent[float32] {
 	return AnimationComponent[float32]{
-		Animations: NewMap[string, *TweenAnimation[float32]](),
+		Animations: customtypes.NewMap[string, *TweenAnimation[float32]](),
 	}
 }
 
 func NewAnimationComponentVector2f() AnimationComponent[Vector2f] {
 	return AnimationComponent[Vector2f]{
-		Animations: NewMap[string, *TweenAnimation[Vector2f]](),
+		Animations: customtypes.NewMap[string, *TweenAnimation[Vector2f]](),
 	}
 }
 
 func NewAnimationComponentVector2i() AnimationComponent[Vector2i] {
 	return AnimationComponent[Vector2i]{
-		Animations: NewMap[string, *TweenAnimation[Vector2i]](),
+		Animations: customtypes.NewMap[string, *TweenAnimation[Vector2i]](),
 	}
 }
 
 type TweenAnimation[T any] struct {
-	KeyframeValues  List[TweenValue[T]]
+	KeyframeValues  customtypes.List[TweenValue[T]]
 	currentValue    T
 	currentIndex    int
 	Length          float32
@@ -191,14 +195,14 @@ func (comp TweenAnimation[T]) IsPlaying() bool {
 
 func (anim *AnimationComponent[int]) NewTweenAnimationInt(animationName string) {
 	anim.Animations.Set(animationName, &TweenAnimation[int]{
-		KeyframeValues: NewList[TweenValue[int]](),
+		KeyframeValues: customtypes.NewList[TweenValue[int]](),
 		timeStepFactor: 0.0,
 	})
 }
 
 func (anim *AnimationComponent[float32]) NewTweenAnimationFloat32(animationName string, loop bool) {
 	anim.Animations.Set(animationName, &TweenAnimation[float32]{
-		KeyframeValues: NewList[TweenValue[float32]](),
+		KeyframeValues: customtypes.NewList[TweenValue[float32]](),
 		timeStepFactor: 0.0,
 		Loop:           loop,
 	})
@@ -206,7 +210,7 @@ func (anim *AnimationComponent[float32]) NewTweenAnimationFloat32(animationName 
 
 func (anim *AnimationComponent[Vector2f]) NewTweenAnimationVector2f(animationName string, loop bool) {
 	anim.Animations.Set(animationName, &TweenAnimation[Vector2f]{
-		KeyframeValues: NewList[TweenValue[Vector2f]](),
+		KeyframeValues: customtypes.NewList[TweenValue[Vector2f]](),
 		timeStepFactor: 0.0,
 		Loop:           loop,
 	})
@@ -214,7 +218,7 @@ func (anim *AnimationComponent[Vector2f]) NewTweenAnimationVector2f(animationNam
 
 func (anim *AnimationComponent[Vector2i]) NewTweenAnimationVector2i(animationName string) {
 	anim.Animations.Set(animationName, &TweenAnimation[Vector2i]{
-		KeyframeValues: NewList[TweenValue[Vector2i]](),
+		KeyframeValues: customtypes.NewList[TweenValue[Vector2i]](),
 		timeStepFactor: 0.0,
 	})
 }
@@ -333,12 +337,12 @@ type SpriteSheet struct {
 	Texture               Texture2D
 	Coloumns, Rows        int
 	TileWidth, TileHeight int
-	TextureCoordinates    List[Pair[Vector2f, Vector2f]]
+	TextureCoordinates    customtypes.List[customtypes.Pair[Vector2f, Vector2f]]
 }
 
 func NewSpriteSheet(_tex Texture2D, _tile_width, _tile_height int) SpriteSheet {
 	_sprite_sheet := SpriteSheet{}
-	_sprite_sheet.TextureCoordinates = NewList[Pair[Vector2f, Vector2f]]()
+	_sprite_sheet.TextureCoordinates = customtypes.NewList[customtypes.Pair[Vector2f, Vector2f]]()
 
 	_coloumns := _tex.Width / _tile_width
 	_rows := _tex.Height / _tile_height
@@ -346,7 +350,7 @@ func NewSpriteSheet(_tex Texture2D, _tile_width, _tile_height int) SpriteSheet {
 		for y := 0; y < _rows; y++ {
 			_uv1 := NewVector2f(float32(x)/float32(_coloumns), float32(y)/float32(_rows))
 			_uv2 := NewVector2f(float32(x+1)/float32(_coloumns), float32(y+1)/float32(_rows))
-			_sprite_sheet.TextureCoordinates.PushBack(Pair[Vector2f, Vector2f]{_uv1, _uv2})
+			_sprite_sheet.TextureCoordinates.PushBack(customtypes.Pair[Vector2f, Vector2f]{_uv1, _uv2})
 		}
 	}
 
@@ -364,7 +368,7 @@ type SpriteAnimaionComponent struct {
 	CurrentTimestep  float32
 	CurrentAnimStep  uint16
 	AnimationSpeed   int
-	Animations       Map[string, List[Vector2i]]
+	Animations       customtypes.Map[string, customtypes.List[Vector2i]]
 	spriteSheet      *SpriteSheet
 }
 
@@ -373,13 +377,13 @@ func NewSpriteAnimationComponent(_sprite_sheet *SpriteSheet) SpriteAnimaionCompo
 		CurrentAnimation: "",
 		CurrentTimestep:  0.0,
 		CurrentAnimStep:  0,
-		Animations:       NewMap[string, List[Vector2i]](),
+		Animations:       customtypes.NewMap[string, customtypes.List[Vector2i]](),
 		spriteSheet:      _sprite_sheet,
 	}
 }
 
 func (_spa *SpriteAnimaionComponent) NewAnimation(_anim_name string) {
-	_spa.Animations.Set(_anim_name, NewList[Vector2i]())
+	_spa.Animations.Set(_anim_name, customtypes.NewList[Vector2i]())
 }
 
 func (_spa *SpriteAnimaionComponent) RegisterFrame(_anim_name string, _value Vector2i) {
@@ -429,21 +433,21 @@ func DebugBodyDrawSystem(_this_scene *Scene, _dt float32) {
 	Shapes.LineWidth = 0.5
 	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
 		if dbc.settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRect(dbc.GetPosition(), _z, dbc.settings.StartDimensions, _color)
+			Shapes.DrawRectRotated(dbc.GetPosition(), _z, dbc.settings.StartDimensions, _color, dbc.GetRotation())
 		} else {
 			Shapes.DrawCircle(dbc.GetPosition(), _z, dbc.settings.StartDimensions.X/2.0, _color)
 		}
 	})
 	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
 		if sbc.settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRect(sbc.GetPosition(), _z, sbc.settings.StartDimensions, _color)
+			Shapes.DrawRectRotated(sbc.GetPosition(), _z, sbc.settings.StartDimensions, _color, sbc.GetRotation())
 		} else {
 			Shapes.DrawCircle(sbc.GetPosition(), _z, sbc.settings.StartDimensions.X/2.0, _color)
 		}
 	})
 	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
 		if kbc.settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRect(kbc.GetPosition(), _z, kbc.settings.StartDimensions, _color)
+			Shapes.DrawRectRotated(kbc.GetPosition(), _z, kbc.settings.StartDimensions, _color, kbc.GetRotation())
 		} else {
 			Shapes.DrawCircle(kbc.GetPosition(), _z, kbc.settings.StartDimensions.X/2.0, _color)
 		}

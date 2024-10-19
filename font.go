@@ -11,6 +11,9 @@ import (
 	"golang.org/x/image/font/opentype"
 
 	"golang.org/x/image/math/fixed"
+
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
 )
 
 var ARABIC_UNICODE = []rune{
@@ -335,7 +338,7 @@ void main(void) {
 )
 
 type FontBatchAtlas struct {
-	charAtlasSet Map[rune, CharAtlasGlyph]
+	charAtlasSet customtypes.Map[rune, CharAtlasGlyph]
 	textureAtlas Texture2D
 	SpriteBatch  *SpriteBatch
 	fontSettings FontBatchSettings
@@ -355,7 +358,7 @@ type FontBatchSettings struct {
 }
 
 func (self *FontBatchAtlas) Init() {
-	self.charAtlasSet = NewMap[rune, CharAtlasGlyph]()
+	self.charAtlasSet = customtypes.NewMap[rune, CharAtlasGlyph]()
 	self.SpriteBatch = &Sprites
 }
 

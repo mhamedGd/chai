@@ -1,5 +1,10 @@
 package chai
 
+import (
+	"github.com/mhamedGd/chai/customtypes"
+	. "github.com/mhamedGd/chai/math"
+)
+
 type ParticlesSpreadPattern = int
 
 const (
@@ -20,7 +25,7 @@ type Particle struct {
 
 type ParticlesShapeBatch struct {
 	shapes           *ShapeBatch
-	particles        List[Particle]
+	particles        customtypes.List[Particle]
 	maxParticles     int
 	lastFreeParticle int
 }
@@ -28,7 +33,7 @@ type ParticlesShapeBatch struct {
 func newParticlesShapeBatch(_max_particles int) *ParticlesShapeBatch {
 	return &ParticlesShapeBatch{
 		shapes:           &Shapes,
-		particles:        NewListSized[Particle](_max_particles),
+		particles:        customtypes.NewListSized[Particle](_max_particles),
 		maxParticles:     _max_particles,
 		lastFreeParticle: 0,
 	}

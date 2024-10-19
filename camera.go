@@ -1,6 +1,7 @@
 package chai
 
 import (
+	. "github.com/mhamedGd/chai/math"
 	"github.com/udhos/goglmath"
 )
 

@@ -1,6 +1,8 @@
 package chai
 
 import (
+	. "github.com/mhamedGd/chai/math"
+
 	"bytes"
 	"encoding/binary"
 	"reflect"
