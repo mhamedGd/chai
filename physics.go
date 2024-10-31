@@ -115,6 +115,7 @@ type DynamicBodySettings struct {
 	StartDimensions            Vector2f
 	StartRotation              float32
 	Mass, Friction, Elasticity float32
+	GravityScale               float32
 	ConstrainRotation          bool
 	PhysicsLayer               uint16
 }
@@ -260,6 +261,8 @@ func DynamicBodySystem(_this_scene *Scene, _dt float32) {
 	Iterate2[VisualTransform, DynamicBodyComponent](func(i EntId, t *VisualTransform, db *DynamicBodyComponent) {
 		t.Position = db.GetPosition()
 		t.Rotation = db.GetRotation()
+
+		LogF("Position: %v", db.GetPosition())
 		// t.Position.X = float32(rb.cpBody.Position().X) + rb.Offset.X
 		// t.Position.Y = float32(rb.cpBody.Position().Y) + rb.Offset.Y
 		// rb.cpBody.SetAngle(BoolToFloat64(!rb.RBSettings.ConstrainRotation) * rb.cpBody.Angle())

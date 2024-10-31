@@ -5,6 +5,8 @@ import (
 	"image/png"
 	"io"
 	"syscall/js"
+
+	. "github.com/mhamedGd/chai/math"
 )
 
 type TextureFilter = js.Value
@@ -68,9 +70,24 @@ type TextureSettings struct {
 }
 
 type Texture2D struct {
-	Width, Height, bpp int
-	textureId          js.Value
-	spwidth, spheight  int
+	Width, Height           int
+	textureId               js.Value
+	spwidth, spheight       int
+	pixelsToMeterDimensions Vector2f
+	localPixelsPerMeter     int
+}
+
+func (t *Texture2D) OverridePixelsPerMeter(_new_ppm int) {
+	t.localPixelsPerMeter = _new_ppm
+	t.resizePixelsToMeters()
+}
+
+func (t *Texture2D) resizePixelsToMeters() {
+	if t.localPixelsPerMeter == 0 {
+		t.pixelsToMeterDimensions = NewVector2f(float32(t.Width)/float32(pixelsPerMeter), float32(t.Height)/float32(pixelsPerMeter))
+	} else {
+		t.pixelsToMeterDimensions = NewVector2f(float32(t.Width)/float32(t.localPixelsPerMeter), float32(t.Height)/float32(t.localPixelsPerMeter))
+	}
 }
 
 type Pixel struct {
@@ -114,6 +131,7 @@ func loadWhiteTexture() Texture2D {
 
 	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), js.Null())
 
+	tempTexture.pixelsToMeterDimensions = NewVector2f(float32(pixelsPerMeter), float32(pixelsPerMeter))
 	return tempTexture
 }
 
@@ -158,6 +176,8 @@ func LoadPng(_filePath string, _textureSettings TextureSettings) Texture2D {
 
 	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), js.Null())
 
+	// tempTexture.pixelsToMeterDimensions = math.NewVector2f(float32(tempTexture.Width)/float32(pixelsPerMeter), float32(tempTexture.Height)/float32(pixelsPerMeter))
+	tempTexture.resizePixelsToMeters()
 	return tempTexture
 }
 
@@ -289,6 +309,13 @@ func LoadPngByTileset(_filePath string, _textureSettings TextureSettings, _sprit
 
 	canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), js.Null())
 
+	// tempTexture.pixelsToMeterDimensions = math.NewVector2f(float32(tempTexture.Width)/float32(pixelsPerMeter), float32(tempTexture.Height)/float32(pixelsPerMeter))
+	// tempTexture.resizePixelsToMeters()
+	if tempTexture.localPixelsPerMeter == 0 {
+		tempTexture.pixelsToMeterDimensions = NewVector2f(float32(tempTexture.spwidth)/float32(pixelsPerMeter), float32(tempTexture.spheight)/float32(pixelsPerMeter))
+	} else {
+		tempTexture.pixelsToMeterDimensions = NewVector2f(float32(tempTexture.spwidth)/float32(tempTexture.localPixelsPerMeter), float32(tempTexture.spheight)/float32(tempTexture.localPixelsPerMeter))
+	}
 	return tempTexture
 }
 
@@ -326,5 +353,6 @@ func LoadTextureFromImg(img image.Image) Texture2D {
 	jsPixels := pixelBufferToJsPixelBubffer(pixels)
 	canvasContext.Call("texImage2D", canvasContext.Get("TEXTURE_2D"), 0, canvasContext.Get("RGBA8"), tempTexture.Width, tempTexture.Height, 0, canvasContext.Get("RGBA"), canvasContext.Get("UNSIGNED_BYTE"), jsPixels)
 
+	tempTexture.resizePixelsToMeters()
 	return tempTexture
 }

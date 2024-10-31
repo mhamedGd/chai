@@ -17,6 +17,32 @@ type VisualTransform struct {
 	UV2        Vector2f
 }
 
+// func NewVisualTransform(_position Vector2f, _z float32, _dimensions Vector2f) VisualTransform {
+// 	return VisualTransform{
+// 		Position:   _position,
+// 		Z:          _z,
+// 		Dimensions: _dimensions.Multp(pixelsPerMeterDimensions),
+// 		Rotation:   0.0,
+// 		Scale:      1.0,
+// 		Tint:       WHITE,
+// 		UV1:        Vector2fZero,
+// 		UV2:        Vector2fOne,
+// 	}
+// }
+// func (vt *VisualTransform) WithRotation(_rotation float32) {
+// 	vt.Rotation = _rotation
+// }
+// func (vt *VisualTransform) WithScale(_scale float32) {
+// 	vt.Scale = _scale
+// }
+// func (vt *VisualTransform) WithTint(_tint RGBA8) {
+// 	vt.Tint = _tint
+// }
+// func (vt *VisualTransform) WithUVs(_uv1, _uv2 Vector2f) {
+// 	vt.UV1 = _uv1
+// 	vt.UV2 = _uv2
+// }
+
 type SpriteComponent struct {
 	Texture Texture2D
 }
@@ -430,7 +456,7 @@ func DebugBodyDrawSystem(_this_scene *Scene, _dt float32) {
 	_original := Shapes.LineWidth
 	_color := NewRGBA8(0, 255, 0, 150)
 	_z := float32(-1)
-	Shapes.LineWidth = 0.5
+	Shapes.LineWidth = 0.1 / float32(pixelsPerMeter)
 	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
 		if dbc.settings.ColliderShape == SHAPE_RECTBODY {
 			Shapes.DrawRectRotated(dbc.GetPosition(), _z, dbc.settings.StartDimensions, _color, dbc.GetRotation())

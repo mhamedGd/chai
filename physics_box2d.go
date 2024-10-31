@@ -28,7 +28,7 @@ func newDynamicBodyBox2d(_entity_id EntId, _visual_transform VisualTransform, _d
 	bodydef.Position.Set(float64(_visual_transform.Position.X), float64(_visual_transform.Position.Y))
 	bodydef.AllowSleep = false
 	bodydef.FixedRotation = _db_settings.ConstrainRotation
-	bodydef.GravityScale = 1.0
+	bodydef.GravityScale = float64(_db_settings.GravityScale)
 	body2d := newphysicsbodyBox2d(_entity_id, _visual_transform, _db_settings.ColliderShape, _db_settings.PhysicsLayer, _db_settings.Mass, _db_settings.Friction, _db_settings.Elasticity, _db_settings.IsTrigger, &bodydef)
 	return DynamicBodyComponent{
 		b2Body:           body2d,

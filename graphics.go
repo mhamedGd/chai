@@ -906,7 +906,7 @@ var (
 
 	}
 	SPRITECENTER_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
-		sp.DrawSpriteOriginScaledDimRotated(v1, v2, v3, v4, 1.0, z, t, c, r)
+		sp.DrawSpriteOriginScaledDimRotated(v1, v2.Multp(t.pixelsToMeterDimensions), v3, v4, 1.0, z, t, c, r)
 	}
 )
 

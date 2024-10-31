@@ -8,14 +8,18 @@ import (
 )
 
 type App struct {
-	Width    int
-	Height   int
-	Title    string
-	OnStart  func()
-	OnUpdate func(float32)
-	OnDraw   func(float32)
-	OnEvent  func(*AppEvent)
+	Width          int
+	Height         int
+	Title          string
+	PixelsPerMeter int
+	OnStart        func()
+	OnUpdate       func(float32)
+	OnDraw         func(float32)
+	OnEvent        func(*AppEvent)
 }
+
+var pixelsPerMeter int
+var pixelsPerMeterDimensions Vector2f
 
 func (_app *App) fillDefaults() {
 	if _app.OnStart == nil {
@@ -37,6 +41,10 @@ func (_app *App) fillDefaults() {
 		_app.OnEvent = func(ae *AppEvent) {
 
 		}
+	}
+
+	if _app.PixelsPerMeter == 0 {
+		_app.PixelsPerMeter = 1
 	}
 
 	setPhysicsFunctions(PHYSICS_ENGINE_BOX2D)
@@ -67,6 +75,9 @@ func appPresets(_app *App) {
 
 	TouchCanvasPos[0] = NewVector2f(0.0, 0.0)
 	TouchCanvasPos[1] = NewVector2f(0.0, 0.0)
+
+	pixelsPerMeter = _app.PixelsPerMeter
+	pixelsPerMeterDimensions = NewVector2f(float32(_app.PixelsPerMeter), float32(_app.PixelsPerMeter))
 
 	initTextures()
 	initInputs()

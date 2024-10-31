@@ -107,7 +107,7 @@ var deltaTime float32
 
 const CAP_DELTA_TIME float32 = 50.0 / 1000.0
 
-const FIXED_UPDATE_INTERVAL float32 = 1.0 / 60.0
+const FIXED_UPDATE_INTERVAL float32 = 1.0 / 30.0
 const MAX_FIXED_CYCLES_PER_FRAME = 5
 
 var timeAccumulation float32
@@ -147,7 +147,7 @@ func jSUpdate(this js.Value, inputs []js.Value) interface{} {
 	for timeAccumulation >= FIXED_UPDATE_INTERVAL {
 		timeAccumulation -= FIXED_UPDATE_INTERVAL
 		// physics_world.cpSpace.Step(float64(1 / 60.0))
-		physics_world.box2dWorld.Step(1/60.0, 8, 3)
+		physics_world.box2dWorld.Step(float64(FIXED_UPDATE_INTERVAL), 16, 6)
 	}
 	return nil
 }
