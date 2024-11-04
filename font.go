@@ -338,17 +338,17 @@ void main(void) {
 )
 
 type FontBatchAtlas struct {
-	charAtlasSet customtypes.Map[rune, CharAtlasGlyph]
-	textureAtlas Texture2D
-	SpriteBatch  *SpriteBatch
-	fontSettings FontBatchSettings
+	m_CharAtlasSet customtypes.Map[rune, CharAtlasGlyph]
+	m_TextureAtlas Texture2D
+	SpriteBatch    *SpriteBatch
+	m_FontSettings FontBatchSettings
 }
 
 type CharAtlasGlyph struct {
-	uv1           Vector2f
-	uv2           Vector2f
-	size, bearing Vector2f
-	advance       float32
+	m_Uv1             Vector2f
+	m_Uv2             Vector2f
+	m_Size, m_Bearing Vector2f
+	m_Advance         float32
 }
 
 type FontBatchSettings struct {
@@ -358,15 +358,15 @@ type FontBatchSettings struct {
 }
 
 func (self *FontBatchAtlas) Init() {
-	self.charAtlasSet = customtypes.NewMap[rune, CharAtlasGlyph]()
+	self.m_CharAtlasSet = customtypes.NewMap[rune, CharAtlasGlyph]()
 	self.SpriteBatch = &Sprites
 }
 
 const GLYPH_ATLAS_GAP = 5
 
-func LoadResponse(path string, ch chan<- []byte) {
+func LoadResponse(_path string, _ch chan<- []byte) {
 
-	resp, err := http.Get(app_url + path)
+	resp, err := http.Get(app_url + _path)
 	if err != nil {
 		LogF(err.Error())
 	}
@@ -377,21 +377,21 @@ func LoadResponse(path string, ch chan<- []byte) {
 	if err != nil {
 		LogF(err.Error())
 	}
-	ch <- data
+	_ch <- data
 }
 
-func LoadResponseBody(path string, ch chan<- io.ReadCloser) {
-	resp, err := http.Get(app_url + path)
+func LoadResponseBody(_path string, _ch chan<- io.ReadCloser) {
+	resp, err := http.Get(app_url + _path)
 	if err != nil {
 		LogF(err.Error())
 	}
-	ch <- resp.Body
+	_ch <- resp.Body
 }
 
 func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBatchAtlas {
 	var tempFont FontBatchAtlas
 	tempFont.Init()
-	tempFont.fontSettings = *_fontSettings
+	tempFont.m_FontSettings = *_fontSettings
 	fontChannel := make(chan []byte)
 
 	go LoadResponse(_fontPath, fontChannel)
@@ -453,7 +453,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 		y_offset = img.Bounds().Dy()
 
 		if char == ' ' {
-			tempFont.charAtlasSet.Set(char, CharAtlasGlyph{uv1: Vector2fZero, uv2: Vector2fZero, size: Vector2fZero, bearing: Vector2fOne, advance: float32(ad) / float32(1<<6)})
+			tempFont.m_CharAtlasSet.Set(char, CharAtlasGlyph{m_Uv1: Vector2fZero, m_Uv2: Vector2fZero, m_Size: Vector2fZero, m_Bearing: Vector2fOne, m_Advance: float32(ad) / float32(1<<6)})
 			continue
 		}
 
@@ -462,7 +462,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 			//LogF("Failed to load bounds of rune: %v", char)
 		}
 
-		tempFont.charAtlasSet.Set(char, CharAtlasGlyph{
+		tempFont.m_CharAtlasSet.Set(char, CharAtlasGlyph{
 			NewVector2f(float32(x_offset)/float32(max_width), 0),
 			NewVector2f(float32(x_offset+img.Bounds().Dx())/float32(max_width), float32(y_offset)/float32(max_height)),
 			NewVector2f(float32(img.Bounds().Dx()), float32(img.Bounds().Dy())),
@@ -487,7 +487,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 				continue
 			}
 
-			tempFont.charAtlasSet.Set(c, CharAtlasGlyph{
+			tempFont.m_CharAtlasSet.Set(c, CharAtlasGlyph{
 				NewVector2f(float32(x_offset)/float32(max_width), 0),
 				NewVector2f(float32(x_offset+img.Bounds().Dx())/float32(max_width), float32(y_offset)/float32(max_height)),
 				NewVector2f(float32(img.Bounds().Dx()), float32(img.Bounds().Dy())),
@@ -499,12 +499,12 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 		}
 	}
 
-	tempFont.textureAtlas = LoadTextureFromImg(atlas_img)
+	tempFont.m_TextureAtlas = LoadTextureFromImg(atlas_img)
 	return tempFont
 }
 
 func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
-	if self.fontSettings.Arabic {
+	if self.m_FontSettings.Arabic {
 		self.drawStringArabic(_text, _position, _scale, _z, _tint)
 	} else {
 		self.drawStringEnglish(_text, _position, _scale, _z, _tint)
@@ -516,25 +516,25 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 	originalPos := _position
 
 	for _, v := range _text {
-		charglyph := self.charAtlasSet.Get(v)
+		charglyph := self.m_CharAtlasSet.Get(v)
 
 		if v == ' ' {
-			originalPos.X += charglyph.advance * _scale
+			originalPos.X += charglyph.m_Advance * _scale
 			continue
 		} else if v == '\n' || int(v) == 10 {
 			originalPos.X = _position.X
-			originalPos.Y -= self.fontSettings.LineHeight
+			originalPos.Y -= self.m_FontSettings.LineHeight
 			continue
 		}
 
-		if !self.charAtlasSet.Has(v) {
+		if !self.m_CharAtlasSet.Has(v) {
 			continue
 		}
 
 		loc_pos := originalPos
-		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, _z, &self.textureAtlas, _tint)
-		originalPos.X += charglyph.advance * _scale
+		loc_pos.Y += (charglyph.m_Bearing.Y) * _scale
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.m_Size.Scale(_scale), charglyph.m_Uv1, charglyph.m_Uv2, _z, &self.m_TextureAtlas, _tint)
+		originalPos.X += charglyph.m_Advance * _scale
 	}
 
 }
@@ -550,25 +550,25 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 	originalPos := _position
 
 	for _, v := range _new_text {
-		charglyph := self.charAtlasSet.Get(v)
-		if !self.charAtlasSet.Has(v) {
+		charglyph := self.m_CharAtlasSet.Get(v)
+		if !self.m_CharAtlasSet.Has(v) {
 			continue
 		}
 
 		if v == ' ' {
-			originalPos.X -= charglyph.advance * 1.25 * _scale
+			originalPos.X -= charglyph.m_Advance * 1.25 * _scale
 			continue
 		} else if v == '\n' {
 			originalPos.X = _position.X
-			originalPos.Y += self.fontSettings.LineHeight
+			originalPos.Y += self.m_FontSettings.LineHeight
 			continue
 		}
 		loc_pos := originalPos
-		loc_pos.X -= charglyph.bearing.X * _scale
-		loc_pos.Y += (charglyph.bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.size.Scale(_scale), charglyph.uv1, charglyph.uv2, _z, &self.textureAtlas, _tint)
+		loc_pos.X -= charglyph.m_Bearing.X * _scale
+		loc_pos.Y += (charglyph.m_Bearing.Y) * _scale
+		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.m_Size.Scale(_scale), charglyph.m_Uv1, charglyph.m_Uv2, _z, &self.m_TextureAtlas, _tint)
 
-		originalPos.X -= charglyph.advance * _scale
+		originalPos.X -= charglyph.m_Advance * _scale
 	}
 }
 

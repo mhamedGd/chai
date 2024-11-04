@@ -9,16 +9,16 @@ import (
 var audioContext js.Value
 
 type AudioStream struct {
-	audioBuffer js.Value
+	m_AudioBuffer js.Value
 }
 
-func LoadAudioFile(_file_path string) AudioStream {
-	audioStream := AudioStream{}
+func LoadAudioFile(_filePath string) AudioStream {
+	m_AudioStream := AudioStream{}
 
 	ch := make(chan js.Value)
 
 	go func() {
-		fetchPromise := js.Global().Get("fetch").Invoke(_file_path)
+		fetchPromise := js.Global().Get("fetch").Invoke(_filePath)
 		fetchPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
 			response := args[0]
 			return response.Call("arrayBuffer")
@@ -33,44 +33,40 @@ func LoadAudioFile(_file_path string) AudioStream {
 
 	}()
 
-	audioStream.audioBuffer = <-ch
-	return audioStream
+	m_AudioStream.m_AudioBuffer = <-ch
+	return m_AudioStream
 }
 
-func (a *AudioSourceComponent) Play(_audio_name string, _async bool) {
+func (a *AudioSourceComponent) Play(_audioName string, _async bool) {
 	audioContext.Call("resume").Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		// source := audioContext.Call("createBufferSource")
-		// source.Set("buffer", a.audioSources[_audio_name].audioBuffer)
-		// source.Call("connect", audioContext.Get("destination"))
-		// source.Call("start", 0.0)
-		if a.audioSourceData.Get(_audio_name).isPlaying && !_async {
-			a.audioSourceData.Get(_audio_name).audioSource.Call("stop", 0.0)
+		if a.audioSourceData.Get(_audioName).m_IsPlaying && !_async {
+			a.audioSourceData.Get(_audioName).m_AudioSource.Call("stop", 0.0)
 		}
 
-		audioSourceData := a.audioSourceData.Get(_audio_name)
+		audioSourceData := a.audioSourceData.Get(_audioName)
 
-		gainNode := audioContext.Call("createGain")
-		gainNode.Get("gain").Set("value", audioSourceData.volume)
-		gainNode.Call("connect", audioContext.Get("destination"))
-		audioSourceData.gainNode = gainNode
+		m_GainNode := audioContext.Call("createGain")
+		m_GainNode.Get("gain").Set("value", audioSourceData.m_Volume)
+		m_GainNode.Call("connect", audioContext.Get("destination"))
+		audioSourceData.m_GainNode = m_GainNode
 
-		audioSourceData.audioSource = audioContext.Call("createBufferSource")
-		audioSourceData.audioSource.Get("playbackRate").Set("value", a.audioSourceData.Get(_audio_name).pitch)
-		audioSourceData.audioSource.Set("buffer", audioSourceData.audioStream.audioBuffer)
-		audioSourceData.audioSource.Call("connect", gainNode)
+		audioSourceData.m_AudioSource = audioContext.Call("createBufferSource")
+		audioSourceData.m_AudioSource.Get("playbackRate").Set("value", a.audioSourceData.Get(_audioName).m_Pitch)
+		audioSourceData.m_AudioSource.Set("buffer", audioSourceData.m_AudioStream.m_AudioBuffer)
+		audioSourceData.m_AudioSource.Call("connect", m_GainNode)
 
-		audioSourceData.audioSource.Set("onended", js.FuncOf(func(this js.Value, args []js.Value) any {
-			audioSourceData.isPlaying = false
-			if audioSourceData.loop {
-				a.Play(_audio_name, _async)
+		audioSourceData.m_AudioSource.Set("onended", js.FuncOf(func(this js.Value, args []js.Value) any {
+			audioSourceData.m_IsPlaying = false
+			if audioSourceData.m_Loop {
+				a.Play(_audioName, _async)
 			}
 			return nil
 		}))
 
-		audioSourceData.audioSource.Call("start", 0.0)
-		audioSourceData.isPlaying = true
+		audioSourceData.m_AudioSource.Call("start", 0.0)
+		audioSourceData.m_IsPlaying = true
 
-		a.audioSourceData.Set(_audio_name, audioSourceData)
+		a.audioSourceData.Set(_audioName, audioSourceData)
 		return nil
 	}))
 }
@@ -94,13 +90,13 @@ type audioJsSource = js.Value
 type gainJsNode = js.Value
 
 type AudioSourceData struct {
-	audioSource audioJsSource
-	gainNode    gainJsNode
-	audioStream *AudioStream
-	isPlaying   bool
-	volume      float32
-	pitch       float32
-	loop        bool
+	m_AudioSource audioJsSource
+	m_GainNode    gainJsNode
+	m_AudioStream *AudioStream
+	m_IsPlaying   bool
+	m_Volume      float32
+	m_Pitch       float32
+	m_Loop        bool
 }
 
 type AudioSourceComponent struct {
@@ -113,57 +109,57 @@ func NewAudioSourceComponent() AudioSourceComponent {
 	}
 }
 
-func (a *AudioSourceComponent) SetVolume(_audio_name string, _value float32) {
-	audioSourceData := a.audioSourceData.Get(_audio_name)
+func (a *AudioSourceComponent) SetVolume(_audioName string, _value float32) {
+	audioSourceData := a.audioSourceData.Get(_audioName)
 
-	audioSourceData.volume = _value
-	audioSourceData.gainNode.Get("gain").Set("volume", audioSourceData.volume)
+	audioSourceData.m_Volume = _value
+	audioSourceData.m_GainNode.Get("gain").Set("m_Volume", audioSourceData.m_Volume)
 
-	a.audioSourceData.Set(_audio_name, audioSourceData)
+	a.audioSourceData.Set(_audioName, audioSourceData)
 }
 
-func (a *AudioSourceComponent) GetVolume(_audio_name string) float32 {
-	return a.audioSourceData.Get(_audio_name).volume
+func (a *AudioSourceComponent) GetVolume(_audioName string) float32 {
+	return a.audioSourceData.Get(_audioName).m_Volume
 }
 
-func (a *AudioSourceComponent) SetPitch(_audio_name string, _value float32) {
-	s := a.audioSourceData.Get(_audio_name)
-	s.pitch = _value
-	a.audioSourceData.Set(_audio_name, s)
+func (a *AudioSourceComponent) SetPitch(_audioName string, _value float32) {
+	s := a.audioSourceData.Get(_audioName)
+	s.m_Pitch = _value
+	a.audioSourceData.Set(_audioName, s)
 }
 
-func (a *AudioSourceComponent) SetLoop(_audio_name string, _value bool) {
-	audioS := a.audioSourceData.Get(_audio_name)
-	audioS.loop = _value
-	a.audioSourceData.Set(_audio_name, audioS)
+func (a *AudioSourceComponent) SetLoop(_audioName string, _value bool) {
+	audioS := a.audioSourceData.Get(_audioName)
+	audioS.m_Loop = _value
+	a.audioSourceData.Set(_audioName, audioS)
 }
 
-func (a *AudioSourceComponent) AddAudioSource(_audio_name string, _audio_stream AudioStream) {
-	audioSourceData := a.audioSourceData.Get(_audio_name)
-	audioSourceData.volume = 1.0
-	audioSourceData.loop = false
+func (a *AudioSourceComponent) AddAudioSource(_audioName string, _audioStream AudioStream) {
+	audioSourceData := a.audioSourceData.Get(_audioName)
+	audioSourceData.m_Volume = 1.0
+	audioSourceData.m_Loop = false
 
-	gainNode := audioContext.Call("createGain")
-	gainNode.Get("gain").Set("value", audioSourceData.volume)
-	gainNode.Call("connect", audioContext.Get("destination"))
-	audioSourceData.gainNode = gainNode
+	m_GainNode := audioContext.Call("createGain")
+	m_GainNode.Get("gain").Set("value", audioSourceData.m_Volume)
+	m_GainNode.Call("connect", audioContext.Get("destination"))
+	audioSourceData.m_GainNode = m_GainNode
 
 	source := audioContext.Call("createBufferSource")
-	source.Set("playbackRate", audioSourceData.pitch)
-	source.Set("buffer", _audio_stream.audioBuffer)
-	source.Call("connect", gainNode)
+	source.Set("playbackRate", audioSourceData.m_Pitch)
+	source.Set("buffer", _audioStream.m_AudioBuffer)
+	source.Call("connect", m_GainNode)
 
 	source.Set("onended", js.FuncOf(func(this js.Value, args []js.Value) any {
-		audioSourceData.isPlaying = false
-		if audioSourceData.loop {
-			a.Play(_audio_name, false)
+		audioSourceData.m_IsPlaying = false
+		if audioSourceData.m_Loop {
+			a.Play(_audioName, false)
 		}
 		return nil
 	}))
 
-	audioSourceData.audioSource = source
-	audioSourceData.audioStream = &_audio_stream
-	audioSourceData.isPlaying = false
+	audioSourceData.m_AudioSource = source
+	audioSourceData.m_AudioStream = &_audioStream
+	audioSourceData.m_IsPlaying = false
 
-	a.audioSourceData.Set(_audio_name, audioSourceData)
+	a.audioSourceData.Set(_audioName, audioSourceData)
 }

@@ -78,9 +78,9 @@ func (l *List[T]) Iterate(action func(_index int, _item *T)) {
 	}
 }
 
-func (l *List[T]) FindIf(return_action func(a T) bool) int {
+func (l *List[T]) FindIf(_returnAction func(a T) bool) int {
 	for i := 0; i < l.Count(); i++ {
-		if return_action(l.Data[i]) {
+		if _returnAction(l.Data[i]) {
 			return i
 		}
 	}
@@ -91,10 +91,10 @@ func (l *List[T]) AllItems() []T {
 	return l.Data
 }
 
-func (l *List[T]) GetItemIndex(item *T) int {
+func (l *List[T]) GetItemIndex(_item *T) int {
 	temp := int(-1)
-	l.Iterate(func(_index int, _item *T) {
-		if _item == item {
+	l.Iterate(func(_index int, _item_it *T) {
+		if _item_it == _item {
 			temp = _index
 			return
 		}

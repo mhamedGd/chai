@@ -22,24 +22,24 @@ func WarningF(_format_string string, args ...interface{}) {
 	logs_num++
 }
 
-func ErrorF(_format_string string, args ...interface{}) {
+func ErrorF(_format_string string, _args ...interface{}) {
 	// fmt.Printf(_format_string+"\n", args...)
-	js.Global().Get("console").Call("error", fmt.Sprintf(_format_string, args...))
+	js.Global().Get("console").Call("error", fmt.Sprintf(_format_string, _args...))
 	//consoleLogFormattedString(_format_string, "style='color:red'", args...)
 	logs_num++
 }
 
 // Print out a message if condition is false
-func Assert(_condition bool, _error_message string, args ...interface{}) {
+func Assert(_condition bool, _error_message string, _args ...interface{}) {
 	if !_condition {
-		ErrorF(_error_message, args...)
+		ErrorF(_error_message, _args...)
 		panic("PROGRAM PANICKED")
 	}
 }
 
-func AssertNot(_condition bool, _error_message string, args ...interface{}) {
+func AssertNot(_condition bool, _error_message string, _args ...interface{}) {
 	if _condition {
-		ErrorF(_error_message, args...)
+		ErrorF(_error_message, _args...)
 		panic("PROGRAM PANICKED")
 	}
 }

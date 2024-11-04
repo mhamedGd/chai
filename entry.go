@@ -112,12 +112,12 @@ const MAX_FIXED_CYCLES_PER_FRAME = 5
 
 var timeAccumulation float32
 
-func jSUpdate(this js.Value, inputs []js.Value) interface{} {
+func jSUpdate(_this js.Value, _inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
 
-	deltaTime = float32(inputs[0].Float())
+	deltaTime = float32(_inputs[0].Float())
 	if deltaTime > CAP_DELTA_TIME {
 		deltaTime = CAP_DELTA_TIME
 	}
@@ -131,7 +131,7 @@ func jSUpdate(this js.Value, inputs []js.Value) interface{} {
 	uiCam.Update(*appRef)
 
 	for _, v := range DynamicRenderQuadTreeContainer.AllItems().AllItems() {
-		t := GetComponentPtr[VisualTransform](current_scene, v.GetItem().entId)
+		t := GetComponentPtr[VisualTransform](current_scene, v.GetItem().m_EntId)
 		DynamicRenderQuadTreeContainer.Relocate(&v, Rect{t.Position.Subtract(t.Dimensions.Scale(0.5)), t.Dimensions})
 	}
 	// LogF("%v", RenderQuadTreeContainer.allItems.Count())
@@ -152,7 +152,7 @@ func jSUpdate(this js.Value, inputs []js.Value) interface{} {
 	return nil
 }
 
-func jSDraw(this js.Value, inputs []js.Value) interface{} {
+func jSDraw(_this js.Value, _inputs []js.Value) interface{} {
 	if !started {
 		return nil
 	}
@@ -169,7 +169,7 @@ func jSDraw(this js.Value, inputs []js.Value) interface{} {
 
 	for _, v := range RenderQuadTreeContainer.Search(ScreenRect).Data {
 		t := v.First
-		v.Second.objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.Second.texture)
+		v.Second.m_ObjectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.Second.m_Texture)
 		RenderQuadTreeContainer.QuadsCount++
 	}
 	dynmaicQuadInView := DynamicRenderQuadTreeContainer.Search(ScreenRect)
@@ -178,11 +178,11 @@ func jSDraw(this js.Value, inputs []js.Value) interface{} {
 		// chai.Shapes.DrawFillRect(v.First.Position, v.First.Dimensions, v.Second.Tint)
 		// rects_count++
 		it := v.GetItem()
-		t := GetComponentPtr[VisualTransform](current_scene, it.entId)
+		t := GetComponentPtr[VisualTransform](current_scene, it.m_EntId)
 		// t := current_scene.transforms.Get(it.entId)
 		// v.objectType(&Shapes, t.Position, t.Dimensions, v.tint, t.Rotation)
 		// Shapes.DrawFillRectRotated(t.Position, t.Dimensions, it.tint, t.Rotation)
-		v.GetItem().objectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.GetItem().texture)
+		v.GetItem().m_ObjectType(&Shapes, &Sprites, t.Position, t.Dimensions, t.UV1, t.UV2, t.Tint, t.Rotation, t.Z, v.GetItem().m_Texture)
 
 	}
 	tempDraw(deltaTime)
@@ -197,7 +197,6 @@ func jSDraw(this js.Value, inputs []js.Value) interface{} {
 
 func setBackgroundColor(_color RGBA8) {
 	canvasContext.Call("clearColor", _color.GetColorRFloat32(), _color.GetColorGFloat32(), _color.GetColorBFloat32(), 1.0)
-
 }
 
 func NumOfQuadsInView() int {

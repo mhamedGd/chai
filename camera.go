@@ -6,69 +6,69 @@ import (
 )
 
 type Camera2D struct {
-	position      Vector2f
-	centerOffset  Vector2f
-	scale         float32
-	projectMatrix goglmath.Matrix4
-	viewMatrix    goglmath.Matrix4
-	mustUpdate    bool
+	m_Position      Vector2f
+	m_CenterOffset  Vector2f
+	m_Scale         float32
+	m_ProjectMatrix goglmath.Matrix4
+	m_ViewMatrix    goglmath.Matrix4
+	m_MustUpdate    bool
 }
 
 func (cam *Camera2D) Init(_app App) {
-	cam.position = Vector2fZero
-	cam.scale = 1.0
-	cam.projectMatrix = goglmath.Matrix4{}
-	cam.projectMatrix = Ortho(0, float32(_app.Width), 0, float32(_app.Height), -5.0, 5.0)
+	cam.m_Position = Vector2fZero
+	cam.m_Scale = 1.0
+	cam.m_ProjectMatrix = goglmath.Matrix4{}
+	cam.m_ProjectMatrix = ortho(0, float32(_app.Width), 0, float32(_app.Height), -5.0, 5.0)
 
-	cam.viewMatrix = goglmath.NewMatrix4Identity()
-	cam.mustUpdate = true
+	cam.m_ViewMatrix = goglmath.NewMatrix4Identity()
+	cam.m_MustUpdate = true
 	//goglmath.SetOrthoMatrix(&cam.ProjectionMatrix, 0, float64(_app.Width), 0, float64(_app.Height), -1, 1)
 
 }
 
 func (cam *Camera2D) Update(_app App) {
-	if !cam.mustUpdate {
+	if !cam.m_MustUpdate {
 		return
 	}
 
-	cam.viewMatrix = Translate(cam.projectMatrix, -cam.position.X+cam.centerOffset.X, -cam.position.Y+cam.centerOffset.Y, 0.0, 1.0, cam.scale)
-	cam.mustUpdate = false
+	cam.m_ViewMatrix = translate(cam.m_ProjectMatrix, -cam.m_Position.X+cam.m_CenterOffset.X, -cam.m_Position.Y+cam.m_CenterOffset.Y, 0.0, 1.0, cam.m_Scale)
+	cam.m_MustUpdate = false
 }
 
-func Ortho(left, right, bottom, top, near, far float32) goglmath.Matrix4 {
+func ortho(_left, _right, _bottom, _top, _near, _far float32) goglmath.Matrix4 {
 
 	matrix := goglmath.Matrix4{}
-	goglmath.SetOrthoMatrix(&matrix, float64(left), float64(right), float64(bottom), float64(top), -1, 1)
+	goglmath.SetOrthoMatrix(&matrix, float64(_left), float64(_right), float64(_bottom), float64(_top), -1, 1)
 
 	return matrix
 }
 
-func Translate(refMatrix goglmath.Matrix4, x, y, z, w float32, scale float32) goglmath.Matrix4 {
-	matrix := refMatrix
-	matrix.Translate(float64(x), float64(y), float64(z), float64(w))
+func translate(_refMatrix goglmath.Matrix4, _x, _y, _z, _w float32, _scale float32) goglmath.Matrix4 {
+	matrix := _refMatrix
+	matrix.Translate(float64(_x), float64(_y), float64(_z), float64(_w))
 
 	m2 := goglmath.NewMatrix4Identity()
-	m2.Scale(float64(scale), float64(scale), 0.0, 1.0)
+	m2.Scale(float64(_scale), float64(_scale), 0.0, 1.0)
 	m2.Multiply(&matrix)
 
 	return m2
 }
 
 func (cam *Camera2D) GetPosition() Vector2f {
-	return cam.position
+	return cam.m_Position
 }
 
 func (cam *Camera2D) GetScale() float32 {
-	return cam.scale
+	return cam.m_Scale
 }
 
-func (cam *Camera2D) IsBoxInView(pos, dim Vector2f) bool {
-	scaledScreenDimensions := NewVector2f(float32(GetCanvasWidth()), float32(GetCanvasHeigth())).Scale(1 / (cam.scale))
+func (cam *Camera2D) IsBoxInView(_pos, _dim Vector2f) bool {
+	scaledScreenDimensions := NewVector2f(float32(GetCanvasWidth()), float32(GetCanvasHeigth())).Scale(1 / (cam.m_Scale))
 
-	MIN_DISTANCE_X := dim.X/0.5 + scaledScreenDimensions.X/2.0
-	MIN_DISTANCE_Y := dim.Y/0.5 + scaledScreenDimensions.Y/2.0
+	MIN_DISTANCE_X := _dim.X/0.5 + scaledScreenDimensions.X/2.0
+	MIN_DISTANCE_Y := _dim.Y/0.5 + scaledScreenDimensions.Y/2.0
 
-	distVector := (pos.Add(dim)).Subtract(cam.position)
+	distVector := (_pos.Add(_dim)).Subtract(cam.m_Position)
 
 	xDepth := MIN_DISTANCE_X - AbsFloat32(distVector.X)
 	yDepth := MIN_DISTANCE_Y - AbsFloat32(distVector.Y)
@@ -76,9 +76,9 @@ func (cam *Camera2D) IsBoxInView(pos, dim Vector2f) bool {
 	return xDepth > 0 && yDepth > 0
 }
 
-func Scale(s float32) goglmath.Matrix4 {
+func Scale(_s float32) goglmath.Matrix4 {
 	matrix := goglmath.NewMatrix4Identity()
-	matrix.Scale(float64(s), float64(s), 0, 1)
+	matrix.Scale(float64(_s), float64(_s), 0, 1)
 
 	return matrix
 }
@@ -89,48 +89,48 @@ const (
 	minCamScale     = 0.0001
 )
 
-// Moves the viewport to a specific position (Bottom-Left)
-func ScrollTo(newPosition Vector2f) {
-	Cam.position = newPosition
-	Cam.mustUpdate = true
+// Moves the viewport to a specific m_Position (Bottom-Left)
+func ScrollTo(_newPosition Vector2f) {
+	Cam.m_Position = _newPosition
+	Cam.m_MustUpdate = true
 }
 
 // Offsets the viewport by a specific value (Bottom-Left)
-func ScrollView(offset Vector2f) {
-	ScrollTo(Cam.position.Add(offset))
+func ScrollView(_offset Vector2f) {
+	ScrollTo(Cam.m_Position.Add(_offset))
 }
 
-func ScaleView(newScale float32) {
-	Cam.scale = newScale
+func ScaleView(_newScale float32) {
+	Cam.m_Scale = _newScale
 	RegulateScale()
 }
 
-func IncreaseScale(increment float32) {
-	Cam.scale += increment
+func IncreaseScale(_increment float32) {
+	Cam.m_Scale += _increment
 	RegulateScale()
 }
 
-func IncreaseScaleU(increment float32) {
-	Cam.scale += (scalePercentage * Cam.scale) * increment
+func IncreaseScaleU(_increment float32) {
+	Cam.m_Scale += (scalePercentage * Cam.m_Scale) * _increment
 	RegulateScale()
 }
 
 func RegulateScale() {
-	Cam.scale = ClampFloat32(Cam.scale, minCamScale, maxCamScale)
-	Cam.mustUpdate = true
+	Cam.m_Scale = ClampFloat32(Cam.m_Scale, minCamScale, maxCamScale)
+	Cam.m_MustUpdate = true
 }
 
 func GetMouseWorldPosition() Vector2f {
 	screenPoint := MouseCanvasPos
 	screenPoint = screenPoint.Subtract(NewVector2f(float32(GetCanvasWidth())/2.0, float32(GetCanvasHeigth())/2.0))
-	screenPoint = screenPoint.Scale(1 / Cam.scale)
-	screenPoint = screenPoint.Add(Cam.position)
+	screenPoint = screenPoint.Scale(1 / Cam.m_Scale)
+	screenPoint = screenPoint.Add(Cam.m_Position)
 	return screenPoint
 }
 
 func GetMouseScreenPosition() Vector2f {
 	screenPoint := MouseCanvasPos
-	screenPoint = screenPoint.Scale(1 / uiCam.scale)
-	screenPoint = screenPoint.Add(uiCam.position)
+	screenPoint = screenPoint.Scale(1 / uiCam.m_Scale)
+	screenPoint = screenPoint.Add(uiCam.m_Position)
 	return screenPoint
 }

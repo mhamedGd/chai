@@ -117,7 +117,7 @@ func ParseLdtk(_filePath string) customtypes.Map[string, Tilemap] {
 	return temp_levels_map
 }
 
-func LoadTilemapLevel(scene *Scene, _levelName string, _allLevels customtypes.Map[string, Tilemap], _z, _scale float32, _offset Vector2f) *Tilemap {
+func LoadTilemapLevel(_scene *Scene, _levelName string, _allLevels customtypes.Map[string, Tilemap], _z, _scale float32, _offset Vector2f) *Tilemap {
 	// tilemap_level := ldtkLevels.Get(_levelName)
 	level := _allLevels.Get(_levelName)
 
@@ -173,8 +173,8 @@ func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _
 			flip_factor_y = 1.0
 		}
 
-		_scaleFactor := _scale * _texture.pixelsToMeterDimensions.X / float32(_l.m_TileSize)
-		LogF("%v", _texture.pixelsToMeterDimensions.X)
+		_scaleFactor := _scale * _texture.m_PixelsToMeterDimensions.X / float32(_l.m_TileSize)
+
 		t := VisualTransform{
 			Position:   NewVector2f(float32(_this_tile.Position[0])+BoolToFloat32(_this_tile.FlipX())*float32(_l.m_TileSize), float32(-_this_tile.Position[1])+BoolToFloat32(_this_tile.FlipY())*float32(_l.m_TileSize)).Add(Vector2fDown.Scale(float32(_l.m_TileSize))).Scale(_scaleFactor).Add(_offset),
 			Dimensions: NewVector2f(float32(_l.m_TileSize)*flip_factor_x, float32(_l.m_TileSize)*flip_factor_y).Scale(_scaleFactor),
@@ -198,7 +198,7 @@ func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _
 		}
 
 		renderObj := newRenderObject(0, SPRITE_RENDEROBJECTTYPEFUNC)
-		renderObj.texture = &_texture
+		renderObj.m_Texture = &_texture
 		RenderQuadTreeContainer.Insert(customtypes.Pair[VisualTransform, RenderObject]{t, renderObj}, Rect{Position: world_actual_postion.AddXY(0.0, -float32(_l.m_TileSize)*_scaleFactor), Size: Vector2fOne.Scale(float32(_l.m_TileSize) * _scaleFactor)})
 	}
 }
@@ -248,12 +248,12 @@ type levelLayer struct {
 	m_ZOffset             float32
 }
 
-func IntArrToVec2f(original []int) Vector2f {
-	return NewVector2f(float32(original[0]), float32(original[1]))
+func IntArrToVec2f(_original []int) Vector2f {
+	return NewVector2f(float32(_original[0]), float32(_original[1]))
 }
 
-func IntArrToVec2i(origin []int) Vector2i {
-	return NewVector2i(origin[0], origin[1])
+func IntArrToVec2i(_origin []int) Vector2i {
+	return NewVector2i(_origin[0], _origin[1])
 }
 
 func newStaticCollisionTileBox2d(_position Vector2f, _tileSize int, _scale float32, _physicsLayer uint16) {

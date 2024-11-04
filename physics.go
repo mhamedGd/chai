@@ -34,8 +34,8 @@ const (
 	PHYSICS_ENGINE_BOX2D = 0
 )
 
-func setPhysicsFunctions(_physics_engine int) {
-	switch _physics_engine {
+func setPhysicsFunctions(_physicsEngine int) {
+	switch _physicsEngine {
 	case PHYSICS_ENGINE_BOX2D:
 		NewDynamicBodyComponent = newDynamicBodyBox2d
 		NewStaticBodyComponent = newStaticBodyBox2d
@@ -83,27 +83,27 @@ func newPhysicsWorld(_gravity Vector2f) PhysicsWorld {
 }
 
 type DynamicBodyComponent struct {
-	b2Body           *box2d.B2Body
+	m_B2Body         *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
-	settings         DynamicBodySettings
+	OnCollisionBegin customtypes.ChaiEvent1[Collision]
+	OnCollisionEnd   customtypes.ChaiEvent1[Collision]
+	m_Settings       DynamicBodySettings
 }
 
 type StaticBodyComponent struct {
-	b2Body           *box2d.B2Body
+	m_B2Body         *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
-	settings         StaticBodySettings
+	OnCollisionBegin customtypes.ChaiEvent1[Collision]
+	OnCollisionEnd   customtypes.ChaiEvent1[Collision]
+	m_Settings       StaticBodySettings
 }
 
 type KinematicBodyComponent struct {
-	b2Body           *box2d.B2Body
+	m_B2Body         *box2d.B2Body
 	OwnerEntId       EntId
-	OnCollisionBegin customtypes.ChaiEvent1[CollisionBox2D]
-	OnCollisionEnd   customtypes.ChaiEvent1[CollisionBox2D]
-	settings         KinematicBodySettings
+	OnCollisionBegin customtypes.ChaiEvent1[Collision]
+	OnCollisionEnd   customtypes.ChaiEvent1[Collision]
+	m_Settings       KinematicBodySettings
 }
 
 type DynamicBodySettings struct {
@@ -142,6 +142,12 @@ type KinematicBodySettings struct {
 	PhysicsLayer         uint16
 }
 
+type Collision struct {
+	FirstEntity    EntId
+	SecondEntity   EntId
+	CollisionPoint Vector2f
+}
+
 var NewDynamicBodyComponent func(EntId, VisualTransform, *DynamicBodySettings) DynamicBodyComponent
 var NewStaticBodyComponent func(EntId, VisualTransform, *StaticBodySettings) StaticBodyComponent
 var NewKinematicBodyComponent func(EntId, VisualTransform, *KinematicBodySettings) KinematicBodyComponent
@@ -172,71 +178,71 @@ var getAngularVelocity func(*box2d.B2Body) float32
 
 // ///////
 func (_dc *DynamicBodyComponent) GetPosition() Vector2f {
-	return getDynamicPosition(_dc.b2Body)
+	return getDynamicPosition(_dc.m_B2Body)
 }
 func (_dc *DynamicBodyComponent) SetPosition(_position Vector2f) {
-	setDynamicPosition(_dc.b2Body, _position)
+	setDynamicPosition(_dc.m_B2Body, _position)
 }
 func (_dc *DynamicBodyComponent) GetRotation() float32 {
-	return getDynamicRotation(_dc.b2Body)
+	return getDynamicRotation(_dc.m_B2Body)
 }
 func (_dc *DynamicBodyComponent) SetRotation(_rotation float32) {
-	setDynamicRotation(_dc.b2Body, _rotation)
+	setDynamicRotation(_dc.m_B2Body, _rotation)
 }
 
 // ///////
 func (_dc *StaticBodyComponent) GetPosition() Vector2f {
-	return getStaticPosition(_dc.b2Body)
+	return getStaticPosition(_dc.m_B2Body)
 }
 func (_dc *StaticBodyComponent) SetPosition(_position Vector2f) {
-	setStaticPosition(_dc.b2Body, _position)
+	setStaticPosition(_dc.m_B2Body, _position)
 }
 func (_dc *StaticBodyComponent) GetRotation() float32 {
-	return getStaticRotation(_dc.b2Body)
+	return getStaticRotation(_dc.m_B2Body)
 }
 func (_dc *StaticBodyComponent) SetRotation(_rotation float32) {
-	setStaticRotation(_dc.b2Body, _rotation)
+	setStaticRotation(_dc.m_B2Body, _rotation)
 }
 
 // ///////
 func (_dc *KinematicBodyComponent) GetPosition() Vector2f {
-	return getKinematicPosition(_dc.b2Body)
+	return getKinematicPosition(_dc.m_B2Body)
 }
 func (_dc *KinematicBodyComponent) SetPosition(_position Vector2f) {
-	setKinematicPosition(_dc.b2Body, _position)
+	setKinematicPosition(_dc.m_B2Body, _position)
 }
 func (_dc *KinematicBodyComponent) GetRotation() float32 {
-	return getKinematicRotation(_dc.b2Body)
+	return getKinematicRotation(_dc.m_B2Body)
 }
 func (_dc *KinematicBodyComponent) SetRotation(_rotation float32) {
-	setKinematicRotation(_dc.b2Body, _rotation)
+	setKinematicRotation(_dc.m_B2Body, _rotation)
 }
 
 /////////
 
-func (_dc *DynamicBodyComponent) ApplyForce(_force_amount, _pivot Vector2f) {
-	applyForce(_dc.b2Body, _force_amount, _pivot)
+func (_dc *DynamicBodyComponent) ApplyForce(_forceAmount, _pivot Vector2f) {
+	applyForce(_dc.m_B2Body, _forceAmount, _pivot)
 }
-func (_dc *DynamicBodyComponent) ApplyImpulse(_force_amount, _pivot Vector2f) {
-	applyImpulse(_dc.b2Body, _force_amount, _pivot)
+func (_dc *DynamicBodyComponent) ApplyImpulse(_forceAmount, _pivot Vector2f) {
+	applyImpulse(_dc.m_B2Body, _forceAmount, _pivot)
 }
 func (_dc *DynamicBodyComponent) ApplyAngularForce(_torque float32, _pivot Vector2f) {
-	applyAngularForce(_dc.b2Body, _torque, _pivot)
+	applyAngularForce(_dc.m_B2Body, _torque, _pivot)
 }
 func (_dc *DynamicBodyComponent) ApplyAngularImpulse(_torque float32, _pivot Vector2f) {
-	applyAngularImpulse(_dc.b2Body, _torque, _pivot)
+	applyAngularImpulse(_dc.m_B2Body, _torque, _pivot)
 }
 func (_dc *DynamicBodyComponent) SetVelocity(_velocity Vector2f) {
-	setVelocity(_dc.b2Body, _velocity.X, _velocity.Y)
+	setVelocity(_dc.m_B2Body, _velocity.X, _velocity.Y)
 }
 func (_dc *DynamicBodyComponent) GetVelocity() Vector2f {
-	return getVelociy(_dc.b2Body)
+	return getVelociy(_dc.m_B2Body)
 }
-func (_dc *DynamicBodyComponent) SetAngularVelocity(_angular_velocity float32) {
-	setAngularVelocity(_dc.b2Body, _angular_velocity)
+func (_dc *DynamicBodyComponent) SetAngularVelocity(_angularVelocity float32) {
+	setAngularVelocity(_dc.m_B2Body, _angularVelocity)
 }
 func (_dc *DynamicBodyComponent) GetAngularVelocity() float32 {
-	return getAngularVelocity(_dc.b2Body)
+	return getAngularVelocity(_dc.m_B2Body)
 }
 
 // ///////////////////////////////////////////
@@ -251,13 +257,13 @@ type RaycastHit struct {
 }
 
 var LineCast func(Vector2f, Vector2f, uint16) RaycastHit
-var RayCast func(_origin Vector2f, _direction Vector2f, _distance float32, _physics_layer uint16) RaycastHit
+var RayCast func(_origin Vector2f, _direction Vector2f, _distance float32, _physicsLayer uint16) RaycastHit
 
-var OverlapBox func(Rect, uint16) (customtypes.List[EntId], bool)
+var OverlapBox func(_box Rect, _physicsLayer uint16) (customtypes.List[EntId], bool)
 
 // /// ECS Systems Relating to Physics ///////////////
 // /////////////////////////////////////////////////////////
-func DynamicBodySystem(_this_scene *Scene, _dt float32) {
+func DynamicBodySystem(_thisScene *Scene, _dt float32) {
 	Iterate2[VisualTransform, DynamicBodyComponent](func(i EntId, t *VisualTransform, db *DynamicBodyComponent) {
 		t.Position = db.GetPosition()
 		t.Rotation = db.GetRotation()

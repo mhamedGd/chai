@@ -14,63 +14,63 @@ type EcsSystem interface {
 	Update(dt float32)
 }
 
-func Iterate1[A any](f func(EntId, *A)) {
-	query1 := ecs.Query1[A](GetCurrentScene().Ecs_World)
-	query1.MapId(f)
+func Iterate1[A any](_f func(EntId, *A)) {
+	query1 := ecs.Query1[A](GetCurrentScene().m_EcsWorld)
+	query1.MapId(_f)
 }
-func Iterate2[A, B any](f func(EntId, *A, *B)) {
-	query2 := ecs.Query2[A, B](GetCurrentScene().Ecs_World)
-	query2.MapId(f)
+func Iterate2[A, B any](_f func(EntId, *A, *B)) {
+	query2 := ecs.Query2[A, B](GetCurrentScene().m_EcsWorld)
+	query2.MapId(_f)
 }
-func Iterate3[A, B, C any](f func(EntId, *A, *B, *C)) {
-	query3 := ecs.Query3[A, B, C](GetCurrentScene().Ecs_World)
-	query3.MapId(f)
+func Iterate3[A, B, C any](_f func(EntId, *A, *B, *C)) {
+	query3 := ecs.Query3[A, B, C](GetCurrentScene().m_EcsWorld)
+	query3.MapId(_f)
 }
-func Iterate4[A, B, C, D any](f func(EntId, *A, *B, *C, *D)) {
-	query4 := ecs.Query4[A, B, C, D](GetCurrentScene().Ecs_World)
-	query4.MapId(f)
+func Iterate4[A, B, C, D any](_f func(EntId, *A, *B, *C, *D)) {
+	query4 := ecs.Query4[A, B, C, D](GetCurrentScene().m_EcsWorld)
+	query4.MapId(_f)
 }
-func Iterate5[A, B, C, D, E any](f func(EntId, *A, *B, *C, *D, *E)) {
-	query4 := ecs.Query5[A, B, C, D, E](GetCurrentScene().Ecs_World)
-	query4.MapId(f)
+func Iterate5[A, B, C, D, E any](_f func(EntId, *A, *B, *C, *D, *E)) {
+	query4 := ecs.Query5[A, B, C, D, E](GetCurrentScene().m_EcsWorld)
+	query4.MapId(_f)
 }
 
 type Scene struct {
-	Background     RGBA8
-	Ecs_World      *ecs.World
-	start_systems  customtypes.List[func(*Scene)]
-	update_systems customtypes.List[func(*Scene, float32)]
-	render_systems customtypes.List[func(*Scene, float32)]
-	tags           customtypes.Map[string, customtypes.List[EntId]]
+	Background      RGBA8
+	m_EcsWorld      *ecs.World
+	m_StartSystems  customtypes.List[func(*Scene)]
+	m_UpdateSystems customtypes.List[func(*Scene, float32)]
+	m_RenderSystems customtypes.List[func(*Scene, float32)]
+	m_Tags          customtypes.Map[string, customtypes.List[EntId]]
 }
 
 func NewScene() Scene {
 	return Scene{
-		Ecs_World:      ecs.NewWorld(),
-		start_systems:  customtypes.NewList[func(*Scene)](),
-		update_systems: customtypes.NewList[func(*Scene, float32)](),
-		render_systems: customtypes.NewList[func(*Scene, float32)](),
-		tags:           customtypes.NewMap[string, customtypes.List[EntId]](),
+		m_EcsWorld:      ecs.NewWorld(),
+		m_StartSystems:  customtypes.NewList[func(*Scene)](),
+		m_UpdateSystems: customtypes.NewList[func(*Scene, float32)](),
+		m_RenderSystems: customtypes.NewList[func(*Scene, float32)](),
+		m_Tags:          customtypes.NewMap[string, customtypes.List[EntId]](),
 	}
 }
 
-func (scene *Scene) AddTag(ent_id EntId, tag_name string) {
-	if !scene.tags.Has(tag_name) {
-		scene.tags.Insert(tag_name, customtypes.NewList[EntId]())
+func (scene *Scene) AddTag(_entId EntId, _tagName string) {
+	if !scene.m_Tags.Has(_tagName) {
+		scene.m_Tags.Insert(_tagName, customtypes.NewList[EntId]())
 	}
 
-	tags := scene.tags.Get(tag_name)
-	tags.PushBack(ent_id)
-	scene.tags.Set(tag_name, tags)
+	m_Tags := scene.m_Tags.Get(_tagName)
+	m_Tags.PushBack(_entId)
+	scene.m_Tags.Set(_tagName, m_Tags)
 }
 
-func (scene *Scene) HasTag(ent_id EntId, tag_name string) bool {
-	if !scene.tags.Has(tag_name) {
+func (scene *Scene) HasTag(_entId EntId, _tagName string) bool {
+	if !scene.m_Tags.Has(_tagName) {
 		return false
 	}
 
-	for _, id := range scene.tags.Get(tag_name).Data {
-		if id == ent_id {
+	for _, id := range scene.m_Tags.Get(_tagName).Data {
+		if id == _entId {
 			return true
 		}
 	}
@@ -78,15 +78,15 @@ func (scene *Scene) HasTag(ent_id EntId, tag_name string) bool {
 	return false
 }
 
-func ChangeScene(scene *Scene) {
+func ChangeScene(_scene *Scene) {
 	if current_scene != nil {
 		current_scene.terminateScene()
 	}
 
-	current_scene = scene
+	current_scene = _scene
 	go func() {
-		for _, s := range scene.start_systems.Data {
-			s(scene)
+		for _, s := range _scene.m_StartSystems.Data {
+			s(_scene)
 		}
 	}()
 }
@@ -97,31 +97,31 @@ func (scene *Scene) terminateScene() {
 	// })
 	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
 		// freeRigidbody(rbc)
-		physics_world.box2dWorld.DestroyBody(dbc.b2Body)
+		physics_world.box2dWorld.DestroyBody(dbc.m_B2Body)
 	})
 	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
 		// freeRigidbody(rbc)
-		physics_world.box2dWorld.DestroyBody(sbc.b2Body)
+		physics_world.box2dWorld.DestroyBody(sbc.m_B2Body)
 	})
 	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
 		// freeRigidbody(rbc)
-		physics_world.box2dWorld.DestroyBody(kbc.b2Body)
+		physics_world.box2dWorld.DestroyBody(kbc.m_B2Body)
 	})
 	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.0))
 
 	DynamicRenderQuadTreeContainer.Clear()
 	RenderQuadTreeContainer.Clear()
-	scene.Ecs_World = ecs.NewWorld()
+	scene.m_EcsWorld = ecs.NewWorld()
 	// scene.transforms.Clear()
-	// scene.update_systems = scene.update_systems[:0]
-	// scene.render_systems = scene.render_systems[:0]
-	scene.update_systems.Clear()
-	scene.render_systems.Clear()
+	// scene.m_UpdateSystems = scene.m_UpdateSystems[:0]
+	// scene.m_RenderSystems = scene.m_RenderSystems[:0]
+	scene.m_UpdateSystems.Clear()
+	scene.m_RenderSystems.Clear()
 
 }
 
 func (scene *Scene) NewEntityId() ecs.Id {
-	id := scene.Ecs_World.NewId()
+	id := scene.m_EcsWorld.NewId()
 	// scene.transforms.Insert(id, t)
 	return id
 }
@@ -129,61 +129,61 @@ func (scene *Scene) NewEntityId() ecs.Id {
 // A gateway to the Component type in chai/Ecs
 type convComponent = ecs.Component
 
-func ToComponent[T any](comp T) ecs.Box[T] {
-	return ecs.C(comp)
+func ToComponent[T any](_comp T) ecs.Box[T] {
+	return ecs.C(_comp)
 }
 
-func (scene *Scene) AddComponents(EntId ecs.Id, comps ...convComponent) {
-	ecs.Write(scene.Ecs_World, EntId, comps...)
+func (scene *Scene) AddComponents(_entId ecs.Id, _comps ...convComponent) {
+	ecs.Write(scene.m_EcsWorld, _entId, _comps...)
 }
 
-func GetComponent[T any](scene *Scene, entityId EntId) (T, bool) {
-	return ecs.Read[T](scene.Ecs_World, entityId)
+func GetComponent[T any](_scene *Scene, _entityId EntId) (T, bool) {
+	return ecs.Read[T](_scene.m_EcsWorld, _entityId)
 }
 
-func GetComponentPtr[T any](scene *Scene, entityId EntId) *T {
-	return ecs.ReadPtr[T](scene.Ecs_World, entityId)
+func GetComponentPtr[T any](_scene *Scene, _entityId EntId) *T {
+	return ecs.ReadPtr[T](_scene.m_EcsWorld, _entityId)
 }
 
-func (scene *Scene) AddEntity(comps ...convComponent) EntId {
+func (scene *Scene) AddEntity(_comps ...convComponent) EntId {
 	id := scene.NewEntityId()
-	scene.AddComponents(id, comps...)
+	scene.AddComponents(id, _comps...)
 
 	return id
 }
 
-func DestroyComponent[T any](scene *Scene, entityId EntId) {
-	comp, _ := GetComponent[T](scene, entityId)
-	ecs.DeleteComponent(scene.Ecs_World, entityId, ToComponent(comp))
+func DestroyComponent[T any](_scene *Scene, _entityId EntId) {
+	comp, _ := GetComponent[T](_scene, _entityId)
+	ecs.DeleteComponent(_scene.m_EcsWorld, _entityId, ToComponent(comp))
 }
 
-func Destroy(scene *Scene, entityId EntId) {
-	ecs.Delete(scene.Ecs_World, entityId)
+func Destroy(_scene *Scene, _entityId EntId) {
+	ecs.Delete(_scene.m_EcsWorld, _entityId)
 }
 
-func (scene *Scene) NewStartSystem(sys func(*Scene)) {
-	scene.start_systems.PushBack(sys)
+func (scene *Scene) NewStartSystem(_sys func(*Scene)) {
+	scene.m_StartSystems.PushBack(_sys)
 }
-func (scene *Scene) NewUpdateSystem(sys func(_this_scene *Scene, _dt float32)) {
-	scene.update_systems.PushBack(sys)
+func (scene *Scene) NewUpdateSystem(_sys func(_this_scene *Scene, _dt float32)) {
+	scene.m_UpdateSystems.PushBack(_sys)
 }
-func (scene *Scene) NewRenderSystem(sys func(_this_scene *Scene, _dt float32)) {
-	scene.render_systems.PushBack(sys)
+func (scene *Scene) NewRenderSystem(_sys func(_this_scene *Scene, _dt float32)) {
+	scene.m_RenderSystems.PushBack(_sys)
 }
 
-func (scene *Scene) SetGravity(new_gravity Vector2f) {
+func (scene *Scene) SetGravity(_newGravity Vector2f) {
 	// physics_world.cpSpace.SetGravity(cpVector2f(new_gravity))
-	physics_world.box2dWorld.SetGravity(vec2fToB2Vec(new_gravity))
+	physics_world.box2dWorld.SetGravity(vec2fToB2Vec(_newGravity))
 }
 
-func (scene *Scene) OnUpdate(dt float32) {
-	for _, sys := range scene.update_systems.Data {
-		sys(scene, dt)
+func (scene *Scene) OnUpdate(_dt float32) {
+	for _, sys := range scene.m_UpdateSystems.Data {
+		sys(scene, _dt)
 	}
 }
 
 func (scene *Scene) OnDraw() {
-	for _, sys := range scene.render_systems.Data {
+	for _, sys := range scene.m_RenderSystems.Data {
 		sys(scene, deltaTime)
 	}
 }

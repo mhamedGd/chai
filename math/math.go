@@ -41,8 +41,8 @@ func ClampInt(_value, _min, _max int) int {
 	return ((_value - _max) & -(BoolToInt(_value <= _max))) + _max
 }
 
-func RemapFloat32(_original, _origial_lowest, _original_highest, _new_lowest, _new_highest float32) float32 {
-	return _new_lowest + (_new_highest-_new_lowest)*(_original/(_original_highest-_origial_lowest))
+func RemapFloat32(_original, _originalLowest, _originalHighest, _newLowest, _newHighest float32) float32 {
+	return _newLowest + (_newHighest-_newLowest)*(_original/(_originalHighest-_originalLowest))
 }
 
 func LerpFloat32(_a, _b, _t float32) float32 {
@@ -98,13 +98,6 @@ func Float1ToUint8_255(_inp float32) uint8 {
 
 func Uint8ToFloat1(_inp uint8) float32 {
 	return float32(_inp) / 255.0
-}
-
-func LerpVector2f(_a, _b Vector2f, _t float32) Vector2f {
-	return Vector2f{
-		X: _a.X + (_b.X-_a.X)*_t,
-		Y: _a.Y + (_b.Y-_a.Y)*_t,
-	}
 }
 
 func BoolToFloat64(_boolean bool) float64 {
@@ -204,6 +197,6 @@ func SignInt(_v int) int {
 	return 0
 }
 
-func MapFloat32(value, low1, high1, low2, high2 float32) float32 {
-	return low2 + (value-low1)*(high2-low2)/(high1-low1)
+func MapFloat32(_value, _low1, _high1, _low2, _high2 float32) float32 {
+	return _low2 + (_value-_low1)*(_high2-_low2)/(_high1-_low1)
 }

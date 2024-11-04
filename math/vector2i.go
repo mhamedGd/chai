@@ -9,41 +9,41 @@ type Vector2i struct {
 	X, Y int
 }
 
-func NewVector2i(x, y int) Vector2i {
+func NewVector2i(_x, _y int) Vector2i {
 	return Vector2i{
-		x, y,
+		_x, _y,
 	}
 }
 
-func (v1 *Vector2i) Equal(v2 *Vector2i) bool {
-	return v1.X == v2.X && v1.Y == v2.Y
+func (v1 *Vector2i) Equal(_v2 *Vector2i) bool {
+	return v1.X == _v2.X && v1.Y == _v2.Y
 }
 
-func (v1 Vector2i) Add(v2 Vector2i) Vector2i {
-	return Vector2i{X: v1.X + v2.X, Y: v1.Y + v2.Y}
+func (v1 Vector2i) Add(_v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X + _v2.X, Y: v1.Y + _v2.Y}
 }
 
-func (v1 Vector2i) AddXY(x, y int) Vector2i {
-	return Vector2i{X: v1.X + x, Y: v1.Y + y}
+func (v1 Vector2i) AddXY(_x, _y int) Vector2i {
+	return Vector2i{X: v1.X + _x, Y: v1.Y + _y}
 }
-func (v1 Vector2i) Subtract(v2 Vector2i) Vector2i {
-	return Vector2i{X: v1.X - v2.X, Y: v1.Y - v2.Y}
-}
-
-func (v1 Vector2i) SubtractXY(x, y int) Vector2i {
-	return Vector2i{X: v1.X - x, Y: v1.Y - y}
+func (v1 Vector2i) Subtract(_v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X - _v2.X, Y: v1.Y - _v2.Y}
 }
 
-func (v1 Vector2i) Multp(v2 Vector2i) Vector2i {
-	return Vector2i{X: v1.X * v2.X, Y: v1.Y * v2.Y}
+func (v1 Vector2i) SubtractXY(_x, _y int) Vector2i {
+	return Vector2i{X: v1.X - _x, Y: v1.Y - _y}
 }
 
-func (v1 Vector2i) MultpXY(x, y int) Vector2i {
-	return Vector2i{X: v1.X * x, Y: v1.Y * y}
+func (v1 Vector2i) Multp(_v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X * _v2.X, Y: v1.Y * _v2.Y}
 }
 
-func (v1 Vector2i) Div(v2 Vector2i) Vector2i {
-	return Vector2i{X: v1.X / v2.X, Y: v1.Y / v2.Y}
+func (v1 Vector2i) MultpXY(_x, _y int) Vector2i {
+	return Vector2i{X: v1.X * _x, Y: v1.Y * _y}
+}
+
+func (v1 Vector2i) Div(_v2 Vector2i) Vector2i {
+	return Vector2i{X: v1.X / _v2.X, Y: v1.Y / _v2.Y}
 }
 
 func (v Vector2i) Scale(_value int) Vector2i {
@@ -64,15 +64,6 @@ func (v *Vector2i) LengthSquared() int {
 	return (v.X * v.X) + (v.Y * v.Y)
 }
 
-func (v Vector2i) Normalize() Vector2i {
-	leng := v.Length()
-	return Vector2i{v.X / leng, v.Y / leng}
-}
-
-func DotProductInt(v1, v2 Vector2i) int {
-	return v1.X*v2.X + v1.Y*v2.Y
-}
-
 func (v *Vector2i) Perpendicular() Vector2i {
 	return Vector2i{-v.Y, v.X}
 }
@@ -83,11 +74,11 @@ func (v *Vector2i) Angle() int {
 
 func (v Vector2i) Rotate(_angle float32, _pivot Vector2i) Vector2i {
 	anglePolar := _angle * math.Pi / 180.0
-	x := v.X
-	y := v.Y
+	_x := v.X
+	_y := v.Y
 
-	v.X = (x-_pivot.X)*int(math.Cos(float64(anglePolar))) - (y-_pivot.Y)*int(math.Sin(float64(anglePolar))) + _pivot.X
-	v.Y = (x-_pivot.X)*int(math.Sin(float64(anglePolar))) + (y-_pivot.Y)*int(math.Cos(float64(anglePolar))) + _pivot.Y
+	v.X = (_x-_pivot.X)*int(math.Cos(float64(anglePolar))) - (_y-_pivot.Y)*int(math.Sin(float64(anglePolar))) + _pivot.X
+	v.Y = (_x-_pivot.X)*int(math.Sin(float64(anglePolar))) + (_y-_pivot.Y)*int(math.Cos(float64(anglePolar))) + _pivot.Y
 	return Vector2i{
 		v.X, v.Y,
 	}
@@ -95,11 +86,11 @@ func (v Vector2i) Rotate(_angle float32, _pivot Vector2i) Vector2i {
 
 func (v Vector2i) RotateCenter(_angle float32) Vector2i {
 	anglePolar := _angle * math.Pi / 180.0
-	x := v.X
-	y := v.Y
+	_x := v.X
+	_y := v.Y
 
-	v.X = (x)*int(math.Cos(float64(anglePolar))) - (y)*int(math.Sin(float64(anglePolar)))
-	v.Y = (x)*int(math.Sin(float64(anglePolar))) + (y)*int(math.Cos(float64(anglePolar)))
+	v.X = (_x)*int(math.Cos(float64(anglePolar))) - (_y)*int(math.Sin(float64(anglePolar)))
+	v.Y = (_x)*int(math.Sin(float64(anglePolar))) + (_y)*int(math.Cos(float64(anglePolar)))
 	return Vector2i{
 		v.X, v.Y,
 	}

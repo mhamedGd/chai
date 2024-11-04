@@ -8,8 +8,8 @@ import (
 )
 
 type ShaderSource struct {
-	vertexShader   string
-	fragmentShader string
+	m_VertexShader   string
+	m_FragmentShader string
 }
 
 type ShaderProgram struct {
@@ -69,8 +69,8 @@ func (_sp *ShaderProgram) ParseShaderFromFile(_filePath string) {
 func (_sp *ShaderProgram) CreateShaderProgram() {
 	_sp.AttributesNumber = 0
 	_sp.ShaderProgramID = canvasContext.Call("createProgram")
-	vertex_shader := CompileShader(canvasContext.Get("VERTEX_SHADER"), _sp.ShaderSource.vertexShader)
-	fragment_shader := CompileShader(canvasContext.Get("FRAGMENT_SHADER"), _sp.ShaderSource.fragmentShader)
+	vertex_shader := CompileShader(canvasContext.Get("VERTEX_SHADER"), _sp.ShaderSource.m_VertexShader)
+	fragment_shader := CompileShader(canvasContext.Get("FRAGMENT_SHADER"), _sp.ShaderSource.m_FragmentShader)
 
 	canvasContext.Call("attachShader", _sp.ShaderProgramID, vertex_shader)
 	canvasContext.Call("attachShader", _sp.ShaderProgramID, fragment_shader)

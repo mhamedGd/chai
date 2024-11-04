@@ -24,44 +24,44 @@ type Particle struct {
 }
 
 type ParticlesShapeBatch struct {
-	shapes           *ShapeBatch
-	particles        customtypes.List[Particle]
-	maxParticles     int
-	lastFreeParticle int
+	m_Shapes           *ShapeBatch
+	m_Particles        customtypes.List[Particle]
+	m_MaxParticles     int
+	m_LastFreeParticle int
 }
 
-func newParticlesShapeBatch(_max_particles int) *ParticlesShapeBatch {
+func newParticlesShapeBatch(_maxParticles int) *ParticlesShapeBatch {
 	return &ParticlesShapeBatch{
-		shapes:           &Shapes,
-		particles:        customtypes.NewListSized[Particle](_max_particles),
-		maxParticles:     _max_particles,
-		lastFreeParticle: 0,
+		m_Shapes:           &Shapes,
+		m_Particles:        customtypes.NewListSized[Particle](_maxParticles),
+		m_MaxParticles:     _maxParticles,
+		m_LastFreeParticle: 0,
 	}
 }
 
-func (p *ParticlesShapeBatch) addParticle(shape Gfx_Shape, lifeTime float32, pos, velo Vector2f, color RGBA8, size, rotation float32) {
-	p.particles.Data[p.lastFreeParticle] = Particle{
-		Shape:          shape,
-		Position:       pos,
-		Velocity:       velo,
-		Size:           size,
-		Rotation:       rotation,
-		LifeTime:       lifeTime,
+func (p *ParticlesShapeBatch) addParticle(_shape Gfx_Shape, _lifeTime float32, _pos, _velocity Vector2f, _color RGBA8, _size, _rotation float32) {
+	p.m_Particles.Data[p.m_LastFreeParticle] = Particle{
+		Shape:          _shape,
+		Position:       _pos,
+		Velocity:       _velocity,
+		Size:           _size,
+		Rotation:       _rotation,
+		LifeTime:       _lifeTime,
 		LifePercentage: 1.0,
-		Color:          color,
+		Color:          _color,
 	}
-	p.lastFreeParticle = (p.lastFreeParticle + 1) % p.particles.Count()
+	p.m_LastFreeParticle = (p.m_LastFreeParticle + 1) % p.m_Particles.Count()
 }
 
 func (p *ParticlesShapeBatch) findLastFreeParticle() int {
-	for i := p.lastFreeParticle; i < p.maxParticles; i++ {
-		if p.particles.Data[i].LifePercentage <= 0.0 {
+	for i := p.m_LastFreeParticle; i < p.m_MaxParticles; i++ {
+		if p.m_Particles.Data[i].LifePercentage <= 0.0 {
 			return i
 		}
 	}
 
-	for i := 0; i < p.lastFreeParticle; i++ {
-		if p.particles.Data[i].LifePercentage <= 0.0 {
+	for i := 0; i < p.m_LastFreeParticle; i++ {
+		if p.m_Particles.Data[i].LifePercentage <= 0.0 {
 			return i
 		}
 	}
@@ -83,60 +83,60 @@ func NewParticlesShapeComponent(_maxParticles int, _z float32, _updateParticle f
 	}
 }
 
-func (p *ParticlesShapeComponent) AddParticleWithVelo(shape Gfx_Shape, lifeTime float32, pos, velo Vector2f, color RGBA8, size, rotation float32) {
-	p.particlesBatch.addParticle(shape, lifeTime, pos, velo, color, size, rotation)
+func (p *ParticlesShapeComponent) AddParticleWithVelo(_shape Gfx_Shape, _lifeTime float32, _pos, _velocity Vector2f, _color RGBA8, _size, _rotation float32) {
+	p.particlesBatch.addParticle(_shape, _lifeTime, _pos, _velocity, _color, _size, _rotation)
 }
 
-func (p *ParticlesShapeComponent) AddParticles(numOfParticles int, shape Gfx_Shape, spread_pattern ParticlesSpreadPattern, life_time, speed float32, pos Vector2f, color RGBA8, size, angle float32) {
-	for i := 0; i < numOfParticles; i++ {
-		velo := calculateSpreadWithSpeed(i, numOfParticles, spread_pattern, speed, Vector2fRight.Rotate(angle, Vector2fZero))
-		p.particlesBatch.addParticle(shape, life_time, pos, velo, color, size, 0.0)
+func (p *ParticlesShapeComponent) AddParticles(_numOfParticles int, _shape Gfx_Shape, _spreadPattern ParticlesSpreadPattern, _lifeTime, _speed float32, _pos Vector2f, _color RGBA8, _size, _rotation float32) {
+	for i := 0; i < _numOfParticles; i++ {
+		velo := calculateSpreadWithSpeed(i, _numOfParticles, _spreadPattern, _speed, Vector2fRight.Rotate(_rotation, Vector2fZero))
+		p.particlesBatch.addParticle(_shape, _lifeTime, _pos, velo, _color, _size, 0.0)
 	}
 }
 
-func calculateSpreadWithSpeed(index, numOfParticles int, spread_pattern ParticlesSpreadPattern, speed float32, direction Vector2f) Vector2f {
-	switch spread_pattern {
+func calculateSpreadWithSpeed(_index, _numOfParticles int, _spreadPattern ParticlesSpreadPattern, _speed float32, _direction Vector2f) Vector2f {
+	switch _spreadPattern {
 	case PARTICLES_LINESPREAD:
-		return direction.Scale(speed)
+		return _direction.Scale(_speed)
 	case PARTICLES_CIRCLESPREAD:
-		angle := (float32(index) / float32(numOfParticles)) * 2.0 * 180.0
-		return direction.Rotate(angle, Vector2fZero)
+		angle := (float32(_index) / float32(_numOfParticles)) * 2.0 * 180.0
+		return _direction.Rotate(angle, Vector2fZero)
 	}
 
-	return Vector2fUp.Scale(-speed)
+	return Vector2fUp.Scale(-_speed)
 }
 
-func ParticlesShapeUpdateSystem(_this_scene *Scene, _dt float32) {
+func ParticlesShapeUpdateSystem(_thiScene *Scene, _dt float32) {
 	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
-		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
-			particle := &psc.particlesBatch.particles.Data[i]
+		for i := psc.particlesBatch.m_MaxParticles - 1; i >= 0; i-- {
+			particle := &psc.particlesBatch.m_Particles.Data[i]
 			if particle.LifePercentage > 0.0 {
 				particle.Position = particle.Position.Add(particle.Velocity)
 				particle.LifePercentage -= (1 / particle.LifeTime) * _dt
 
 				psc.UpdateParticle(_dt, particle)
 				if particle.LifePercentage <= 0.0 {
-					psc.particlesBatch.lastFreeParticle = i
+					psc.particlesBatch.m_LastFreeParticle = i
 				}
 			}
 		}
 	})
 }
 
-func ParticlesShapeRenderSystem(_this_scene *Scene, _dt float32) {
+func ParticlesShapeRenderSystem(_thisScene *Scene, _dt float32) {
 	Iterate1[ParticlesShapeComponent](func(i EntId, psc *ParticlesShapeComponent) {
-		for i := psc.particlesBatch.maxParticles - 1; i >= 0; i-- {
-			particle := &psc.particlesBatch.particles.Data[i]
+		for i := psc.particlesBatch.m_MaxParticles - 1; i >= 0; i-- {
+			particle := &psc.particlesBatch.m_Particles.Data[i]
 			if particle.LifePercentage > 0.0 {
 				switch particle.Shape {
 				case GFX_PARTICLES_SHAPE_RECT:
-					psc.particlesBatch.shapes.DrawRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+					psc.particlesBatch.m_Shapes.DrawRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				case GFX_PARTICLES_SHAPE_TRIANGLE:
-					psc.particlesBatch.shapes.DrawTriangleRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+					psc.particlesBatch.m_Shapes.DrawTriangleRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				case GFX_PARTICLES_SHAPE_CIRCLE:
-					psc.particlesBatch.shapes.DrawCircle(particle.Position, psc.z, particle.Size, particle.Color)
+					psc.particlesBatch.m_Shapes.DrawCircle(particle.Position, psc.z, particle.Size, particle.Color)
 				case GFX_PARTICLES_SHAPE_FILLRECT:
-					psc.particlesBatch.shapes.DrawFillRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
+					psc.particlesBatch.m_Shapes.DrawFillRectRotated(particle.Position, psc.z, Vector2fOne.Scale(particle.Size), particle.Color, particle.Rotation)
 				}
 
 			}

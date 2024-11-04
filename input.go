@@ -20,7 +20,6 @@ type ChaiInput struct {
 }
 
 func initInputs() {
-	// inputs_map = make(map[string]ChaiInput)
 	inputs_map = customtypes.NewMap[string, ChaiInput]()
 
 	current_frame_pressed_inputs = make(map[string]ChaiInput)
@@ -51,82 +50,74 @@ func updateInput() {
 	previousNumberOfFingersTouching = currentNumberOfFingersTouching
 }
 
-func BindInput(_input_name string, _corr_key KeyCode) {
-	if inputs_map.Has(_input_name) {
+func BindInput(_inputName string, _corrKey KeyCode) {
+	if inputs_map.Has(_inputName) {
 		return
 	}
 
-	inputs_map.Set(_input_name, ChaiInput{
-		Name:             _input_name,
-		CorrespondingKey: _corr_key,
+	inputs_map.Set(_inputName, ChaiInput{
+		Name:             _inputName,
+		CorrespondingKey: _corrKey,
 		ActionStrength:   0.0,
 		IsPressed:        false,
 	})
 
 	addEventListenerWindow(JS_KEYDOWN, func(ae *AppEvent) {
-		inp := inputs_map.Get(_input_name)
+		inp := inputs_map.Get(_inputName)
 		if ae.Key == inp.CorrespondingKey {
 
 			inp.ActionStrength = 1.0
 			inp.IsPressed = true
 
-			// inputs_map[_input_name] = inp
-			inputs_map.Set(_input_name, inp)
+			inputs_map.Set(_inputName, inp)
 		}
 	})
 
 	addEventListenerWindow(JS_KEYUP, func(ae *AppEvent) {
-		// inp := inputs_map[_input_name]
-		// if ae.Key == inp.CorrespondingKey {
-		// 	inp.ActionStrength = 0.0
-		// 	inp.IsPressed = false
-		// 	inputs_map[_input_name] = inp
-		// }
-		inp := inputs_map.Get(_input_name)
+		inp := inputs_map.Get(_inputName)
 		if ae.Key == inp.CorrespondingKey {
 
 			inp.ActionStrength = 0.0
 			inp.IsPressed = false
 
-			// inputs_map[_input_name] = inp
-			inputs_map.Set(_input_name, inp)
+			inputs_map.Set(_inputName, inp)
 		}
 	})
 
 }
 
-func ChangeInputBinding(_input_name string, _new_binding KeyCode) {
-	if inputs_map.Has(_input_name) {
-		inp := inputs_map.Get(_input_name)
-		inp.CorrespondingKey = _new_binding
-		inputs_map.Set(_input_name, inp)
+func ChangeInputBinding(_inputName string, _newBinding KeyCode) {
+	if inputs_map.Has(_inputName) {
+		inp := inputs_map.Get(_inputName)
+		inp.CorrespondingKey = _newBinding
+		inputs_map.Set(_inputName, inp)
 	}
 }
 
-func GetActionStrength(_input_name string) float32 {
-	return inputs_map.Get(_input_name).ActionStrength
+func GetActionStrength(_inputName string) float32 {
+	return inputs_map.Get(_inputName).ActionStrength
 }
-func IsPressed(_input_name string) bool {
-	return inputs_map.Get(_input_name).IsPressed
+func IsPressed(_inputName string) bool {
+	return inputs_map.Get(_inputName).IsPressed
 }
 
-func IsJustPressed(_input_name string) bool {
-	_, curr_ok := current_frame_pressed_inputs[_input_name]
-	_, prev_ok := prev_frame_pressed_inputs[_input_name]
+func IsJustPressed(_inputName string) bool {
+	_, curr_ok := current_frame_pressed_inputs[_inputName]
+	_, prev_ok := prev_frame_pressed_inputs[_inputName]
 	return curr_ok && !prev_ok
 }
 
-func IsJustReleased(_input_name string) bool {
-	_, curr_ok := current_frame_pressed_inputs[_input_name]
-	_, prev_ok := prev_frame_pressed_inputs[_input_name]
+func IsJustReleased(_inputName string) bool {
+	_, curr_ok := current_frame_pressed_inputs[_inputName]
+	_, prev_ok := prev_frame_pressed_inputs[_inputName]
 	return !curr_ok && prev_ok
 }
 
 var isCurrentMousePressed bool
 var isPreviousMousePressed bool
 
-func IsMousePressed(mouseButton MouseButton) bool {
-	return mousePressed == mouseButton
+func IsMousePressed(_mouseButton MouseButton) bool {
+	return mousePressed == _mouseButton
 }
 
 func IsMouseJustPressed() bool {
@@ -145,10 +136,10 @@ func onMouseReleased() {
 
 }
 
-func GetMousePosition(evt js.Value) Vector2f {
+func GetMousePosition(_evt js.Value) Vector2f {
 	rect := canvas.Call("getBoundingClientRect")
-	return NewVector2f((float32(evt.Get("clientX").Int())-float32(rect.Get("left").Int()))/float32(rect.Get("width").Int())*float32(canvas.Get("width").Int()),
-		float32(canvas.Get("height").Int())-(float32(evt.Get("clientY").Int())-float32(rect.Get("top").Int()))/float32(rect.Get("height").Int())*float32(canvas.Get("height").Int()))
+	return NewVector2f((float32(_evt.Get("clientX").Int())-float32(rect.Get("left").Int()))/float32(rect.Get("width").Int())*float32(canvas.Get("width").Int()),
+		float32(canvas.Get("height").Int())-(float32(_evt.Get("clientY").Int())-float32(rect.Get("top").Int()))/float32(rect.Get("height").Int())*float32(canvas.Get("height").Int()))
 }
 
 var currentNumberOfFingersTouching uint8
@@ -186,16 +177,16 @@ func onTouchEnd(_numOfFingers uint8) {
 ##############################################################################
 */
 
-func addEventListenerWindow(eventType JsEventType, callback func(*AppEvent)) {
+func addEventListenerWindow(_eventType JsEventType, _callback func(*AppEvent)) {
 
 	eventListener := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		callback(parseJSEvent(args[0]))
+		_callback(parseJSEvent(args[0]))
 
-		//ae := parseJSEvent(event)
+		//ae := parseJSEvent(m_Event)
 		return nil
 	})
 
-	js.Global().Call("addEventListener", js.ValueOf(eventType), eventListener)
+	js.Global().Call("addEventListener", js.ValueOf(_eventType), eventListener)
 
 }
 
@@ -226,8 +217,8 @@ const CodeNull string = ""
 
 type AppEvent struct {
 	// --------------------------
-	event jsEvent
-	Type  JsEventType
+	m_Event jsEvent
+	Type    JsEventType
 	// FOR KEYBOARD EVENT
 	Code KeyCode
 	Key  string
@@ -248,51 +239,51 @@ type AppEvent struct {
 }
 
 func (ap *AppEvent) GetJsEvent() js.Value {
-	return js.Value(ap.event)
+	return js.Value(ap.m_Event)
 }
 
 func (e *AppEvent) PreventDefault() {
-	e.event.Call("preventDefualt")
+	e.m_Event.Call("preventDefualt")
 }
 func (e *AppEvent) StopPropagation() {
-	e.event.Call("stopPropagation")
+	e.m_Event.Call("stopPropagation")
 }
 
-func parseJSEvent(event jsEvent) *AppEvent {
-	var eventType JsEventType = event.Get("type").String()
+func parseJSEvent(_event jsEvent) *AppEvent {
+	var eventType JsEventType = _event.Get("type").String()
 	switch eventType {
 	case JS_KEYDOWN, JS_KEYUP:
 		return &AppEvent{
-			event:   event,
+			m_Event: _event,
 			Type:    eventType,
-			Code:    event.Get("keycode").String(),
-			Key:     event.Get("code").String(),
+			Code:    _event.Get("keycode").String(),
+			Key:     _event.Get("code").String(),
 			OffsetX: 0,
 			OffsetY: 0,
 			Button:  MouseButtonNull,
 		}
 	case JS_MOUSEMOVED:
 		return &AppEvent{
-			event:   event,
+			m_Event: _event,
 			Type:    eventType,
 			Code:    CodeNull,
 			Key:     KeyNull,
-			OffsetX: event.Get("offsetX").Int(),
-			OffsetY: event.Get("offsetY").Int(),
+			OffsetX: _event.Get("offsetX").Int(),
+			OffsetY: _event.Get("offsetY").Int(),
 		}
 	case JS_MOUSEDOWN, JS_MOUSEUP:
 		return &AppEvent{
-			event:   event,
+			m_Event: _event,
 			Type:    eventType,
 			Code:    CodeNull,
 			Key:     KeyNull,
 			OffsetX: 0,
 			OffsetY: 0,
-			Button:  event.Get("button").Int(),
+			Button:  _event.Get("button").Int(),
 		}
 	case JS_TOUCHSTART:
 		return &AppEvent{
-			event:       event,
+			m_Event:     _event,
 			Type:        eventType,
 			Code:        CodeNull,
 			Key:         KeyNull,
@@ -303,7 +294,7 @@ func parseJSEvent(event jsEvent) *AppEvent {
 		}
 	case JS_TOUCHEND:
 		return &AppEvent{
-			event:       event,
+			m_Event:     _event,
 			Type:        eventType,
 			Code:        CodeNull,
 			Key:         KeyNull,
@@ -314,7 +305,7 @@ func parseJSEvent(event jsEvent) *AppEvent {
 		}
 	case JS_TOUCHMOVED:
 		return &AppEvent{
-			event:   event,
+			m_Event: _event,
 			Type:    eventType,
 			Code:    CodeNull,
 			Key:     KeyNull,
@@ -324,7 +315,7 @@ func parseJSEvent(event jsEvent) *AppEvent {
 	}
 
 	return &AppEvent{
-		event:   event,
+		m_Event: _event,
 		Code:    CodeNull,
 		Key:     KeyNull,
 		OffsetX: 0,

@@ -17,134 +17,133 @@ type item_key_type = int64
 
 type QuadTreeItemLocation[T any] struct {
 
-	// container *[]Pair[Rect, T]
-	container *Map[item_key_type, Pair[Rect, T]]
-	index     int64
+	// m_Container *[]Pair[Rect, T]
+	m_Container *Map[item_key_type, Pair[Rect, T]]
+	m_Index     int64
 }
 
 type QuadTreeItem[T any] struct {
-	item  T
-	pItem QuadTreeItemLocation[*QuadTreeItem[T]]
+	m_Item  T
+	m_PItem QuadTreeItemLocation[*QuadTreeItem[T]]
 }
 
 func (qtt *QuadTreeItem[T]) GetItem() T {
-	return qtt.item
+	return qtt.m_Item
 }
 
 type StaticQuadTree[T any] struct {
-	depth   int
-	rect    Rect
-	rChild  [4]Rect
-	pChild  [4]*StaticQuadTree[T]
-	pItems  List[Pair[Rect, T]]
-	counter int64
+	m_Depth   int
+	m_Rect    Rect
+	m_RChild  [4]Rect
+	m_PChild  [4]*StaticQuadTree[T]
+	m_PItems  List[Pair[Rect, T]]
+	m_Counter int64
 }
 
-func NewStaticQuadTree[T any](size Rect, _nDepth int) StaticQuadTree[T] {
+func NewStaticQuadTree[T any](_size Rect, _nDepth int) StaticQuadTree[T] {
 	// l := list.New()
 	sqt := StaticQuadTree[T]{}
-	sqt.depth = _nDepth
-	sqt.Resize(size)
+	sqt.m_Depth = _nDepth
+	sqt.Resize(_size)
 
 	return sqt
 }
 
-func (sqt *StaticQuadTree[T]) Resize(rArea Rect) {
+func (sqt *StaticQuadTree[T]) Resize(_rArea Rect) {
 	sqt.clear()
 
-	sqt.rect = rArea
-	vChildSize := sqt.rect.Size.Scale(0.5)
+	sqt.m_Rect = _rArea
+	vChildSize := sqt.m_Rect.Size.Scale(0.5)
 
-	sqt.rChild = [4]Rect{
-		{sqt.rect.Position, vChildSize},
-		{NewVector2f(sqt.rect.Position.X+vChildSize.X, sqt.rect.Position.Y), vChildSize},
-		{NewVector2f(sqt.rect.Position.X, sqt.rect.Position.Y+vChildSize.Y), vChildSize},
-		{sqt.rect.Position.Add(vChildSize), vChildSize},
+	sqt.m_RChild = [4]Rect{
+		{sqt.m_Rect.Position, vChildSize},
+		{NewVector2f(sqt.m_Rect.Position.X+vChildSize.X, sqt.m_Rect.Position.Y), vChildSize},
+		{NewVector2f(sqt.m_Rect.Position.X, sqt.m_Rect.Position.Y+vChildSize.Y), vChildSize},
+		{sqt.m_Rect.Position.Add(vChildSize), vChildSize},
 	}
 }
 
 func (sqt *StaticQuadTree[T]) clear() {
-	sqt.pItems.Clear()
+	sqt.m_PItems.Clear()
 
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			sqt.pChild[i].clear()
+		if sqt.m_PChild[i] != nil {
+			sqt.m_PChild[i].clear()
 		}
-		sqt.pChild[i] = nil
+		sqt.m_PChild[i] = nil
 	}
 }
 
 func (sqt *StaticQuadTree[T]) size() int {
-	nCount := sqt.pItems.Count()
+	nCount := sqt.m_PItems.Count()
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			nCount += len(sqt.pChild)
+		if sqt.m_PChild[i] != nil {
+			nCount += len(sqt.m_PChild)
 		}
 	}
 
 	return nCount
 }
 
-func (sqt *StaticQuadTree[T]) Insert(item T, itemsize Rect) {
+func (sqt *StaticQuadTree[T]) Insert(_item T, _itemsize Rect) {
 
 	for i := 0; i < 4; i++ {
-		if sqt.rChild[i].ContainsRect(itemsize) {
-			if sqt.depth+1 < MAX_QUADTREE_DEPTH {
-				if sqt.pChild[i] == nil {
-					_tree := NewStaticQuadTree[T](sqt.rChild[i], sqt.depth+1)
-					sqt.pChild[i] = &_tree
+		if sqt.m_RChild[i].ContainsRect(_itemsize) {
+			if sqt.m_Depth+1 < MAX_QUADTREE_DEPTH {
+				if sqt.m_PChild[i] == nil {
+					_tree := NewStaticQuadTree[T](sqt.m_RChild[i], sqt.m_Depth+1)
+					sqt.m_PChild[i] = &_tree
 				}
 
-				sqt.pChild[i].Insert(item, itemsize)
+				sqt.m_PChild[i].Insert(_item, _itemsize)
 				return
 			}
 		}
 	}
 
-	// sqt.pItems = append(sqt.pItems, Pair[Rect, T]{itemsize, item})
-	sqt.pItems.PushBack(Pair[Rect, T]{itemsize, item})
+	// sqt.m_PItems = append(sqt.m_PItems, Pair[Rect, T]{itemsize, m_Item})
+	sqt.m_PItems.PushBack(Pair[Rect, T]{_itemsize, _item})
 }
 
-func (sqt *StaticQuadTree[T]) Search(rArea Rect) List[T] {
+func (sqt *StaticQuadTree[T]) Search(_rArea Rect) List[T] {
 	listItems := NewList[T]()
 
-	return sqt.searchThrough(rArea, listItems)
+	return sqt.searchThrough(_rArea, listItems)
 }
 
-func (sqt *StaticQuadTree[T]) searchThrough(rArea Rect, listItems List[T]) List[T] {
-	for _, v := range sqt.pItems.Data {
-		if rArea.OverlapsRect(v.First) {
-			// listItems = append(listItems, v.Second)
-			listItems.PushBack(v.Second)
+func (sqt *StaticQuadTree[T]) searchThrough(_rArea Rect, _listItems List[T]) List[T] {
+	for _, v := range sqt.m_PItems.Data {
+		if _rArea.OverlapsRect(v.First) {
+			_listItems.PushBack(v.Second)
 		}
 	}
 
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			if rArea.ContainsRect(sqt.rChild[i]) {
-				listItems = sqt.pChild[i].Items(listItems)
+		if sqt.m_PChild[i] != nil {
+			if _rArea.ContainsRect(sqt.m_RChild[i]) {
+				_listItems = sqt.m_PChild[i].Items(_listItems)
 
-			} else if sqt.rChild[i].OverlapsRect(rArea) {
-				listItems = sqt.pChild[i].searchThrough(rArea, listItems)
+			} else if sqt.m_RChild[i].OverlapsRect(_rArea) {
+				_listItems = sqt.m_PChild[i].searchThrough(_rArea, _listItems)
 			}
 		}
 	}
 
-	return listItems
+	return _listItems
 }
 
-func (sqt *StaticQuadTree[T]) Items(listItems List[T]) List[T] {
+func (sqt *StaticQuadTree[T]) Items(_listItems List[T]) List[T] {
 
-	for _, v := range sqt.pItems.AllItems() {
+	for _, v := range sqt.m_PItems.AllItems() {
 		// listItems = append(listItems, v.Second)
-		listItems.PushBack(v.Second)
+		_listItems.PushBack(v.Second)
 	}
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			listItems = sqt.pChild[i].Items(listItems)
+		if sqt.m_PChild[i] != nil {
+			_listItems = sqt.m_PChild[i].Items(_listItems)
 		}
 	}
-	return listItems
+	return _listItems
 }
 
 func (sqt *StaticQuadTree[T]) ItemsList() List[T] {
@@ -153,14 +152,14 @@ func (sqt *StaticQuadTree[T]) ItemsList() List[T] {
 }
 
 func (sqt *StaticQuadTree[T]) Area() Rect {
-	return sqt.rect
+	return sqt.m_Rect
 }
 
 type StaticQuadTreeContainer[T any] struct {
 	allItems   List[T]
 	root       StaticQuadTree[*T]
 	QuadsCount int
-	counter    int64
+	m_Counter  int64
 }
 
 func NewStaticQuadTreeContainer[T any]() StaticQuadTreeContainer[T] {
@@ -172,8 +171,8 @@ func NewStaticQuadTreeContainer[T any]() StaticQuadTreeContainer[T] {
 	}
 }
 
-func (stQtC *StaticQuadTreeContainer[T]) Resize(rect Rect) {
-	stQtC.root.Resize(rect)
+func (stQtC *StaticQuadTreeContainer[T]) Resize(_rect Rect) {
+	stQtC.root.Resize(_rect)
 }
 
 func (stQtc *StaticQuadTreeContainer[T]) Empty() bool {
@@ -186,16 +185,16 @@ func (stQtc *StaticQuadTreeContainer[T]) Clear() {
 }
 
 // The issue is that stQtc.allItems.PushBack is only adding first row elements for some reason???
-func (stQtc *StaticQuadTreeContainer[T]) Insert(item T, itemsize Rect) {
+func (stQtc *StaticQuadTreeContainer[T]) Insert(_item T, _itemsize Rect) {
 
-	stQtc.allItems.PushBack(item)
-	// newItem.pItem = stQtc.root.Insert(&newItem, itemsize)
+	stQtc.allItems.PushBack(_item)
+	// newItem.m_PItem = stQtc.root.Insert(&newItem, itemsize)
 
-	stQtc.root.Insert(&item, itemsize)
+	stQtc.root.Insert(&_item, _itemsize)
 }
 
-func (stQtc *StaticQuadTreeContainer[T]) Search(rArea Rect) List[*T] {
-	listItems := stQtc.root.Search(rArea)
+func (stQtc *StaticQuadTreeContainer[T]) Search(_rArea Rect) List[*T] {
+	listItems := stQtc.root.Search(_rArea)
 	return listItems
 }
 
@@ -207,150 +206,150 @@ func (stQtc *StaticQuadTreeContainer[T]) QuadsInViewCount() int {
 //////////////// DYNAMIC QUADTREE ////////////////
 
 type DynamicQuadTree[T any] struct {
-	depth   int
-	rect    Rect
-	rChild  [4]Rect
-	pChild  [4]*DynamicQuadTree[T]
-	pItems  Map[item_key_type, Pair[Rect, T]]
-	counter int64
+	m_Depth   int
+	m_Rect    Rect
+	m_RChild  [4]Rect
+	m_PChild  [4]*DynamicQuadTree[T]
+	m_PItems  Map[item_key_type, Pair[Rect, T]]
+	m_Counter int64
 }
 
-func NewDynamicQuadTree[T any](size Rect, _nDepth int) DynamicQuadTree[T] {
+func NewDynamicQuadTree[T any](_size Rect, _nDepth int) DynamicQuadTree[T] {
 	// l := list.New()
 	sqt := DynamicQuadTree[T]{}
-	sqt.depth = _nDepth
-	sqt.Resize(size)
+	sqt.m_Depth = _nDepth
+	sqt.Resize(_size)
 
 	return sqt
 }
 
-func (sqt *DynamicQuadTree[T]) Resize(rArea Rect) {
+func (sqt *DynamicQuadTree[T]) Resize(_rArea Rect) {
 	sqt.clear()
 
-	sqt.rect = rArea
-	vChildSize := sqt.rect.Size.Scale(0.5)
+	sqt.m_Rect = _rArea
+	vChildSize := sqt.m_Rect.Size.Scale(0.5)
 
-	sqt.rChild = [4]Rect{
-		{sqt.rect.Position, vChildSize},
-		{NewVector2f(sqt.rect.Position.X+vChildSize.X, sqt.rect.Position.Y), vChildSize},
-		{NewVector2f(sqt.rect.Position.X, sqt.rect.Position.Y+vChildSize.Y), vChildSize},
-		{sqt.rect.Position.Add(vChildSize), vChildSize},
+	sqt.m_RChild = [4]Rect{
+		{sqt.m_Rect.Position, vChildSize},
+		{NewVector2f(sqt.m_Rect.Position.X+vChildSize.X, sqt.m_Rect.Position.Y), vChildSize},
+		{NewVector2f(sqt.m_Rect.Position.X, sqt.m_Rect.Position.Y+vChildSize.Y), vChildSize},
+		{sqt.m_Rect.Position.Add(vChildSize), vChildSize},
 	}
 }
 
 func (sqt *DynamicQuadTree[T]) clear() {
-	sqt.pItems.Clear()
+	sqt.m_PItems.Clear()
 
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			sqt.pChild[i].clear()
+		if sqt.m_PChild[i] != nil {
+			sqt.m_PChild[i].clear()
 		}
-		sqt.pChild[i] = nil
+		sqt.m_PChild[i] = nil
 	}
 }
 
 func (sqt *DynamicQuadTree[T]) size() int {
-	nCount := sqt.pItems.Count()
+	nCount := sqt.m_PItems.Count()
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			nCount += len(sqt.pChild)
+		if sqt.m_PChild[i] != nil {
+			nCount += len(sqt.m_PChild)
 		}
 	}
 
 	return nCount
 }
 
-func (sqt *DynamicQuadTree[T]) Insert(item T, itemsize Rect) QuadTreeItemLocation[T] {
+func (sqt *DynamicQuadTree[T]) Insert(_item T, _itemsize Rect) QuadTreeItemLocation[T] {
 
 	for i := 0; i < 4; i++ {
-		if sqt.rChild[i].ContainsRect(itemsize) {
-			if sqt.depth+1 < MAX_QUADTREE_DEPTH {
-				if sqt.pChild[i] == nil {
-					_tree := NewDynamicQuadTree[T](sqt.rChild[i], sqt.depth+1)
-					sqt.pChild[i] = &_tree
+		if sqt.m_RChild[i].ContainsRect(_itemsize) {
+			if sqt.m_Depth+1 < MAX_QUADTREE_DEPTH {
+				if sqt.m_PChild[i] == nil {
+					_tree := NewDynamicQuadTree[T](sqt.m_RChild[i], sqt.m_Depth+1)
+					sqt.m_PChild[i] = &_tree
 				}
 
-				return sqt.pChild[i].Insert(item, itemsize)
+				return sqt.m_PChild[i].Insert(_item, _itemsize)
 			}
 		}
 	}
 
-	// sqt.pItems = append(sqt.pItems, Pair[Rect, T]{itemsize, item})
-	sqt.pItems.Insert(sqt.counter, Pair[Rect, T]{itemsize, item})
-	sqt.counter += 1
+	// sqt.m_PItems = append(sqt.m_PItems, Pair[Rect, T]{itemsize, m_Item})
+	sqt.m_PItems.Insert(sqt.m_Counter, Pair[Rect, T]{_itemsize, _item})
+	sqt.m_Counter += 1
 	return QuadTreeItemLocation[T]{
-		container: &sqt.pItems,
-		index:     sqt.counter,
+		m_Container: &sqt.m_PItems,
+		m_Index:     sqt.m_Counter,
 	}
 }
-func (sqt *DynamicQuadTree[T]) InsertWithIndex(item T, itemsize Rect, index int64) QuadTreeItemLocation[T] {
+func (sqt *DynamicQuadTree[T]) InsertWithIndex(_item T, _itemsize Rect, _index int64) QuadTreeItemLocation[T] {
 	for i := 0; i < 4; i++ {
-		if sqt.rChild[i].ContainsRect(itemsize) {
-			if sqt.depth+1 < MAX_QUADTREE_DEPTH {
-				if sqt.pChild[i] == nil {
-					_tree := NewDynamicQuadTree[T](sqt.rChild[i], sqt.depth+1)
-					sqt.pChild[i] = &_tree
+		if sqt.m_RChild[i].ContainsRect(_itemsize) {
+			if sqt.m_Depth+1 < MAX_QUADTREE_DEPTH {
+				if sqt.m_PChild[i] == nil {
+					_tree := NewDynamicQuadTree[T](sqt.m_RChild[i], sqt.m_Depth+1)
+					sqt.m_PChild[i] = &_tree
 				}
 
-				return sqt.pChild[i].InsertWithIndex(item, itemsize, index)
+				return sqt.m_PChild[i].InsertWithIndex(_item, _itemsize, _index)
 			}
 		}
 	}
 
-	// sqt.pItems = append(sqt.pItems, Pair[Rect, T]{itemsize, item})
-	sqt.pItems.Insert(index, Pair[Rect, T]{itemsize, item})
+	// sqt.m_PItems = append(sqt.m_PItems, Pair[Rect, T]{itemsize, m_Item})
+	sqt.m_PItems.Insert(_index, Pair[Rect, T]{_itemsize, _item})
 	return QuadTreeItemLocation[T]{
-		container: &sqt.pItems,
-		index:     index,
+		m_Container: &sqt.m_PItems,
+		m_Index:     _index,
 	}
 }
 
-// func (sqt *StaticQuadTree[T]) Remove(item T) bool {
-// 	it := sqt.pItems.FindIf(func(a Pair[Rect, T]) bool {
-// 		&item == a.Second
+// func (sqt *StaticQuadTree[T]) Remove(m_Item T) bool {
+// 	it := sqt.m_PItems.FindIf(func(a Pair[Rect, T]) bool {
+// 		&m_Item == a.Second
 // 	})
 // }
 
-func (sqt *DynamicQuadTree[T]) Search(rArea Rect) List[T] {
+func (sqt *DynamicQuadTree[T]) Search(_rArea Rect) List[T] {
 	listItems := NewList[T]()
 
-	return sqt.searchThrough(rArea, listItems)
+	return sqt.searchThrough(_rArea, listItems)
 }
 
-func (sqt *DynamicQuadTree[T]) searchThrough(rArea Rect, listItems List[T]) List[T] {
-	for _, v := range sqt.pItems.AllItems() {
-		if rArea.OverlapsRect(v.First) {
+func (sqt *DynamicQuadTree[T]) searchThrough(_rArea Rect, _listItems List[T]) List[T] {
+	for _, v := range sqt.m_PItems.AllItems() {
+		if _rArea.OverlapsRect(v.First) {
 			// listItems = append(listItems, v.Second)
-			listItems.PushBack(v.Second)
+			_listItems.PushBack(v.Second)
 		}
 	}
 
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			if rArea.ContainsRect(sqt.rChild[i]) {
-				listItems = sqt.pChild[i].Items(listItems)
+		if sqt.m_PChild[i] != nil {
+			if _rArea.ContainsRect(sqt.m_RChild[i]) {
+				_listItems = sqt.m_PChild[i].Items(_listItems)
 
-			} else if sqt.rChild[i].OverlapsRect(rArea) {
-				listItems = sqt.pChild[i].searchThrough(rArea, listItems)
+			} else if sqt.m_RChild[i].OverlapsRect(_rArea) {
+				_listItems = sqt.m_PChild[i].searchThrough(_rArea, _listItems)
 			}
 		}
 	}
 
-	return listItems
+	return _listItems
 }
 
-func (sqt *DynamicQuadTree[T]) Items(listItems List[T]) List[T] {
+func (sqt *DynamicQuadTree[T]) Items(_listItems List[T]) List[T] {
 
-	for _, v := range sqt.pItems.AllItems() {
+	for _, v := range sqt.m_PItems.AllItems() {
 		// listItems = append(listItems, v.Second)
-		listItems.PushBack(v.Second)
+		_listItems.PushBack(v.Second)
 	}
 	for i := 0; i < 4; i++ {
-		if sqt.pChild[i] != nil {
-			listItems = sqt.pChild[i].Items(listItems)
+		if sqt.m_PChild[i] != nil {
+			_listItems = sqt.m_PChild[i].Items(_listItems)
 		}
 	}
-	return listItems
+	return _listItems
 }
 
 func (sqt *DynamicQuadTree[T]) ItemsList() List[T] {
@@ -359,14 +358,14 @@ func (sqt *DynamicQuadTree[T]) ItemsList() List[T] {
 }
 
 func (sqt *DynamicQuadTree[T]) Area() Rect {
-	return sqt.rect
+	return sqt.m_Rect
 }
 
 type DynamicQuadTreeContainer[T any] struct {
 	allItems   Map[item_key_type, QuadTreeItem[T]]
 	root       DynamicQuadTree[*QuadTreeItem[T]]
 	QuadsCount int
-	counter    int64
+	m_Counter  int64
 }
 
 func (dqtc *DynamicQuadTreeContainer[T]) AllItems() *Map[item_key_type, QuadTreeItem[T]] {
@@ -382,8 +381,8 @@ func NewDynamicQuadTreeContainer[T any]() DynamicQuadTreeContainer[T] {
 	}
 }
 
-func (stQtC *DynamicQuadTreeContainer[T]) Resize(rect Rect) {
-	stQtC.root.Resize(rect)
+func (stQtC *DynamicQuadTreeContainer[T]) Resize(_rect Rect) {
+	stQtC.root.Resize(_rect)
 }
 
 func (stQtc *DynamicQuadTreeContainer[T]) Empty() bool {
@@ -396,80 +395,80 @@ func (stQtc *DynamicQuadTreeContainer[T]) Clear() {
 }
 
 // The issue is that stQtc.allItems.PushBack is only adding first row elements for some reason???
-func (stQtc *DynamicQuadTreeContainer[T]) Insert(item T, itemsize Rect) int64 {
+func (stQtc *DynamicQuadTreeContainer[T]) Insert(_item T, _itemSize Rect) int64 {
 
 	var newItem QuadTreeItem[T]
-	newItem.item = item
+	newItem.m_Item = _item
 	// stQtc.allItems.PushBack(-1, newItem)
 
-	// stQtc.root.Insert(&item, itemsize)
-	// stQtc.allItems.LastAddedElement().pItem = stQtc.root.Insert(stQtc.allItems.LastAddedElement(), itemsize)
-	stQtc.counter += 1
-	stQtc.allItems.Insert(stQtc.counter, newItem)
-	// newItem.pItem = stQtc.root.Insert(&newItem, itemsize)
+	// stQtc.root.Insert(&m_Item, itemsize)
+	// stQtc.allItems.LastAddedElement().m_PItem = stQtc.root.Insert(stQtc.allItems.LastAddedElement(), itemsize)
+	stQtc.m_Counter += 1
+	stQtc.allItems.Insert(stQtc.m_Counter, newItem)
+	// newItem.m_PItem = stQtc.root.Insert(&newItem, itemsize)
 
 	tempItem := stQtc.allItems.LastAddedElement()
-	tempItem.pItem = stQtc.root.InsertWithIndex(&tempItem, itemsize, stQtc.counter)
+	tempItem.m_PItem = stQtc.root.InsertWithIndex(&tempItem, _itemSize, stQtc.m_Counter)
 
 	stQtc.allItems.SetLatestElement(tempItem)
 
-	return stQtc.counter
+	return stQtc.m_Counter
 }
 
-func (stQtc *DynamicQuadTreeContainer[T]) InsertWithIndex(item T, itemsize Rect, index int64) {
+func (stQtc *DynamicQuadTreeContainer[T]) InsertWithIndex(_item T, _itemSize Rect, _index int64) {
 
 	var newItem QuadTreeItem[T]
-	newItem.item = item
+	newItem.m_Item = _item
 	// stQtc.allItems.PushBack(-1, newItem)
 
-	// stQtc.root.Insert(&item, itemsize)
-	// stQtc.allItems.LastAddedElement().pItem = stQtc.root.Insert(stQtc.allItems.LastAddedElement(), itemsize)
+	// stQtc.root.Insert(&m_Item, itemsize)
+	// stQtc.allItems.LastAddedElement().m_PItem = stQtc.root.Insert(stQtc.allItems.LastAddedElement(), itemsize)
 
-	stQtc.allItems.Insert(index, newItem)
-	// newItem.pItem = stQtc.root.Insert(&newItem, itemsize)
+	stQtc.allItems.Insert(_index, newItem)
+	// newItem.m_PItem = stQtc.root.Insert(&newItem, itemsize)
 
 	// tempItem := stQtc.allItems.LastAddedElement()
-	tempItem := stQtc.allItems.Get(index)
-	tempItem.pItem = stQtc.root.InsertWithIndex(&tempItem, itemsize, index)
+	tempItem := stQtc.allItems.Get(_index)
+	tempItem.m_PItem = stQtc.root.InsertWithIndex(&tempItem, _itemSize, _index)
 
 	// stQtc.allItems.SetLatestElement(tempItem)
-	stQtc.allItems.Set(index, tempItem)
+	stQtc.allItems.Set(_index, tempItem)
 
 }
 
-func (stQtc *DynamicQuadTreeContainer[T]) Remove(item *QuadTreeItem[T]) {
-	item.pItem.container.Erase(item.pItem.index)
+func (stQtc *DynamicQuadTreeContainer[T]) Remove(_item *QuadTreeItem[T]) {
+	_item.m_PItem.m_Container.Erase(_item.m_PItem.m_Index)
 
-	stQtc.allItems.Erase(item.pItem.index)
+	stQtc.allItems.Erase(_item.m_PItem.m_Index)
 }
 
-func (stQtc *DynamicQuadTreeContainer[T]) RemoveWithIndex(_item_index int64) {
+func (stQtc *DynamicQuadTreeContainer[T]) RemoveWithIndex(_itemIndex int64) {
 
-	searchedItem := stQtc.searchIndex(_item_index)
+	searchedItem := stQtc.searchIndex(_itemIndex)
 	if searchedItem == nil {
 		fmt.Printf("Didn't find object\n")
 		return
 	}
 
-	searchedItem.pItem.container.Erase(_item_index)
-	stQtc.allItems.Erase(_item_index)
+	searchedItem.m_PItem.m_Container.Erase(_itemIndex)
+	stQtc.allItems.Erase(_itemIndex)
 }
 
-func (stQtc *DynamicQuadTreeContainer[T]) Relocate(item *QuadTreeItem[T], itemsize Rect) {
-	// item.pItem.container.Erase(item.pItem.index)
-	// item.pItem = stQtc.root.InsertWithIndex(item, itemsize, item.pItem.index)
-	stQtc.Remove(item)
-	stQtc.InsertWithIndex(item.item, itemsize, item.pItem.index)
+func (stQtc *DynamicQuadTreeContainer[T]) Relocate(_item *QuadTreeItem[T], _itemSize Rect) {
+	// m_Item.m_PItem.m_Container.Erase(m_Item.m_PItem.m_Index)
+	// m_Item.m_PItem = stQtc.root.InsertWithIndex(m_Item, itemsize, m_Item.m_PItem.m_Index)
+	stQtc.Remove(_item)
+	stQtc.InsertWithIndex(_item.m_Item, _itemSize, _item.m_PItem.m_Index)
 }
 
-func (stQtc *DynamicQuadTreeContainer[T]) Search(rArea Rect) List[*QuadTreeItem[T]] {
-	listItems := stQtc.root.Search(rArea)
+func (stQtc *DynamicQuadTreeContainer[T]) Search(_rArea Rect) List[*QuadTreeItem[T]] {
+	listItems := stQtc.root.Search(_rArea)
 	return listItems
 }
 
 func (dQtc *DynamicQuadTreeContainer[T]) searchIndex(_index int64) *QuadTreeItem[T] {
 	for _, v := range dQtc.allItems.AllItems() {
-		if v.pItem.index == _index {
+		if v.m_PItem.m_Index == _index {
 			return &v
 		}
 	}

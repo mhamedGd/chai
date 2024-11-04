@@ -90,7 +90,7 @@ func modulesInitialization(_app *App) {
 	physics_world = newPhysicsWorld(NewVector2f(0.0, -98.0))
 
 	Cam.Init(*_app)
-	Cam.centerOffset = NewVector2f(float32(_app.Width)/2.0, float32(appRef.Height)/2.0)
+	Cam.m_CenterOffset = NewVector2f(float32(_app.Width)/2.0, float32(appRef.Height)/2.0)
 	Cam.Update(*_app)
 
 	uiCam.Init(*_app)
