@@ -169,4 +169,12 @@ func eventsInitialization(_app *App) {
 		})
 		return 0
 	})
+
+	// Axes: Left (0, 1), Right (2, 3)
+	// JoystickLeft (10), JoystickRight(11)
+	// Buttons: South(0), East(1), West(2), North(3)
+	// Triggers: LeftTriggerA(4), RightTriggerA(5), LeftTriggerB(6), RightTriggerB(7)
+	// Select(8), Start(9)
+	// DPad: Up(12), Down(13), Left(14), Right(15)
+
 }
