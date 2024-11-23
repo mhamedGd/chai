@@ -36,21 +36,23 @@ func Iterate5[A, B, C, D, E any](_f func(EntId, *A, *B, *C, *D, *E)) {
 }
 
 type Scene struct {
-	Background      RGBA8
-	m_EcsWorld      *ecs.World
-	m_StartSystems  customtypes.List[func(*Scene)]
-	m_UpdateSystems customtypes.List[func(*Scene, float32)]
-	m_RenderSystems customtypes.List[func(*Scene, float32)]
-	m_Tags          customtypes.Map[string, customtypes.List[EntId]]
+	Background       RGBA8
+	m_EcsWorld       *ecs.World
+	m_StartSystems   customtypes.List[func(*Scene)]
+	m_UpdateSystems  customtypes.List[func(*Scene, float32)]
+	m_PhysicsSystems customtypes.List[func(*Scene, float32)]
+	m_RenderSystems  customtypes.List[func(*Scene, float32)]
+	m_Tags           customtypes.Map[string, customtypes.List[EntId]]
 }
 
 func NewScene() Scene {
 	return Scene{
-		m_EcsWorld:      ecs.NewWorld(),
-		m_StartSystems:  customtypes.NewList[func(*Scene)](),
-		m_UpdateSystems: customtypes.NewList[func(*Scene, float32)](),
-		m_RenderSystems: customtypes.NewList[func(*Scene, float32)](),
-		m_Tags:          customtypes.NewMap[string, customtypes.List[EntId]](),
+		m_EcsWorld:       ecs.NewWorld(),
+		m_StartSystems:   customtypes.NewList[func(*Scene)](),
+		m_UpdateSystems:  customtypes.NewList[func(*Scene, float32)](),
+		m_PhysicsSystems: customtypes.NewList[func(*Scene, float32)](),
+		m_RenderSystems:  customtypes.NewList[func(*Scene, float32)](),
+		m_Tags:           customtypes.NewMap[string, customtypes.List[EntId]](),
 	}
 }
 
@@ -167,6 +169,9 @@ func (scene *Scene) NewStartSystem(_sys func(*Scene)) {
 func (scene *Scene) NewUpdateSystem(_sys func(_this_scene *Scene, _dt float32)) {
 	scene.m_UpdateSystems.PushBack(_sys)
 }
+func (scene *Scene) NewPhysicsSystem(_sys func(_this_scene *Scene, _dt float32)) {
+	scene.m_PhysicsSystems.PushBack(_sys)
+}
 func (scene *Scene) NewRenderSystem(_sys func(_this_scene *Scene, _dt float32)) {
 	scene.m_RenderSystems.PushBack(_sys)
 }
@@ -185,6 +190,12 @@ func (scene *Scene) OnUpdate(_dt float32) {
 func (scene *Scene) OnDraw() {
 	for _, sys := range scene.m_RenderSystems.Data {
 		sys(scene, deltaTime)
+	}
+}
+
+func (scene *Scene) OnPhysics(_dt float32) {
+	for _, sys := range scene.m_PhysicsSystems.Data {
+		sys(scene, _dt)
 	}
 }
 

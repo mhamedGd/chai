@@ -268,7 +268,6 @@ func DynamicBodySystem(_thisScene *Scene, _dt float32) {
 		t.Position = db.GetPosition()
 		t.Rotation = db.GetRotation()
 
-		LogF("Position: %v", db.GetPosition())
 		// t.Position.X = float32(rb.cpBody.Position().X) + rb.Offset.X
 		// t.Position.Y = float32(rb.cpBody.Position().Y) + rb.Offset.Y
 		// rb.cpBody.SetAngle(BoolToFloat64(!rb.RBSettings.ConstrainRotation) * rb.cpBody.Angle())

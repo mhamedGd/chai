@@ -6,30 +6,30 @@ import (
 	"unsafe"
 )
 
-func VertexSliceAsBytes(_verts []Vertex) []byte {
-	n := int(vertexByteSize) * len(_verts)
+// func VertexSliceAsBytes(_verts []Vertex) []byte {
+// 	n := int(vertexByteSize) * len(_verts)
 
-	up := unsafe.Pointer(&(_verts[0]))
-	pi := (*[1]byte)(up)
-	buf := (*pi)[:]
-	sh := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
-	sh.Len = n
-	sh.Cap = n
+// 	up := unsafe.Pointer(&(_verts[0]))
+// 	pi := (*[1]byte)(up)
+// 	buf := (*pi)[:]
+// 	sh := (*reflect.SliceHeader)(unsafe.Pointer(&buf))
+// 	sh.Len = n
+// 	sh.Cap = n
 
-	return buf
-}
+// 	return buf
+// }
 
-func vertexBufferToJsVertexBuffer(_buffer []Vertex) js.Value {
-	jsVerts := js.Global().Get("Uint8Array").New(len(_buffer) * VertexSize)
-	var verticesBytes []byte
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&verticesBytes))
-	header.Cap = cap(_buffer) * VertexSize
-	header.Len = len(_buffer) * VertexSize
-	header.Data = uintptr(unsafe.Pointer(&_buffer[0]))
+// func vertexBufferToJsVertexBuffer(_buffer []Vertex) js.Value {
+// 	jsVerts := js.Global().Get("Uint8Array").New(len(_buffer) * VertexSize)
+// 	var verticesBytes []byte
+// 	header := (*reflect.SliceHeader)(unsafe.Pointer(&verticesBytes))
+// 	header.Cap = cap(_buffer) * VertexSize
+// 	header.Len = len(_buffer) * VertexSize
+// 	header.Data = uintptr(unsafe.Pointer(&_buffer[0]))
 
-	js.CopyBytesToJS(jsVerts, verticesBytes)
-	return jsVerts
-}
+// 	js.CopyBytesToJS(jsVerts, verticesBytes)
+// 	return jsVerts
+// }
 
 func float32BufferToJsFloat32Buffer(_buffer []float32) js.Value {
 	jsElements := js.Global().Get("Uint8Array").New(len(_buffer) * 4)

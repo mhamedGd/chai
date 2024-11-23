@@ -21,49 +21,7 @@ type SpriteComponent struct {
 	Texture Texture2D
 }
 
-func SpriteRenderSystem(_thisScene *Scene, _dt float32) {
-	// query2 := ecs.Query2[VisualTransform, SpriteComponent](GetCurrentScene().Ecs_World)
-	// query2.MapId(func(id ecs.Id, t *VisualTransform, s *SpriteComponent) {
-	// 	newOffset := _render.Offset.Rotate(t.Rotation, Vector2fZero)
-	// 	halfDim := NewVector2f(newOffset.X*float32(s.Texture.Width)/2.0, newOffset.Y*float32(s.Texture.Height)/2.0)
-	// 	_render.Sprites.DrawSpriteOriginScaledRotated(t.Position.Add(halfDim), Vector2fZero, Vector2fOne, _render.Scale, &s.Texture, s.Tint, t.Rotation)
-	// })
-}
-
-func ShapesDrawingSystem(_thisScene *Scene, dt float32) {
-	queryTri := ecs.Query2[VisualTransform, TriangleRenderComponent](_thisScene.m_EcsWorld)
-	queryTri.MapId(func(id ecs.Id, t *VisualTransform, tri *TriangleRenderComponent) {
-		if Cam.IsBoxInView(t.Position, tri.Dimensions.Scale(t.Scale)) {
-			Shapes.DrawTriangleRotated(t.Position, t.Z, tri.Dimensions.Scale(t.Scale), tri.Tint, t.Rotation)
-		}
-	})
-
-	queryRect := ecs.Query2[VisualTransform, RectRenderComponent](_thisScene.m_EcsWorld)
-	queryRect.MapId(func(id ecs.Id, t *VisualTransform, rect *RectRenderComponent) {
-		if Cam.IsBoxInView(t.Position, rect.Dimensions.Scale(t.Scale)) {
-			Shapes.DrawRectRotated(t.Position, t.Z, rect.Dimensions.Scale(t.Scale), rect.Tint, t.Rotation)
-		}
-	})
-
-	queryFillRectBottom := ecs.Query2[VisualTransform, FillRectBottomRenderComponent](_thisScene.m_EcsWorld)
-	queryFillRectBottom.MapId(func(id ecs.Id, t *VisualTransform, rect *FillRectBottomRenderComponent) {
-		rectDims := rect.Dimensions.Scale(t.Scale)
-		if Cam.IsBoxInView(t.Position.Subtract(rectDims.Scale(0.5)), rectDims) {
-			Shapes.DrawFillRectBottomRotated(t.Position, t.Z, rectDims, rect.Tint, t.Rotation)
-		}
-	})
-}
-
 type LineRenderComponent struct {
-}
-
-type TriangleRenderComponent struct {
-	Dimensions  Vector2f
-	OffsetPivot Vector2f
-	Tint        RGBA8
-}
-
-type FillTriangleRenderComponent struct {
 }
 
 type RectRenderComponent struct {
@@ -72,15 +30,6 @@ type RectRenderComponent struct {
 }
 
 type FillRectRenderComponent struct {
-}
-
-type FillRectBottomRenderComponent struct {
-	Dimensions Vector2f
-	Tint       RGBA8
-}
-
-type CircleRenderComponent struct {
-	Tint RGBA8
 }
 
 /*
@@ -427,31 +376,36 @@ func SpriteAnimationSystem(_thisScene *Scene, _dt float32) {
 //////////////////////////////////////////////////////
 
 func DebugBodyDrawSystem(_thisScene *Scene, _dt float32) {
-	_original := Shapes.LineWidth
-	_color := NewRGBA8(0, 255, 0, 150)
-	_z := float32(-1)
-	Shapes.LineWidth = 0.1 / float32(pixelsPerMeter)
+	_original := lineWidth
+	_color := NewRGBA8(0, 255, 0, 255)
+	_z := float32(0)
+	lineWidth = 0.01
 	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
 		if dbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRectRotated(dbc.GetPosition(), _z, dbc.m_Settings.StartDimensions, _color, dbc.GetRotation())
+			DrawRect(dbc.GetPosition(), dbc.m_Settings.StartDimensions, _color, _z, dbc.GetRotation())
 		} else {
-			Shapes.DrawCircle(dbc.GetPosition(), _z, dbc.m_Settings.StartDimensions.X/2.0, _color)
+			DrawCircle(dbc.GetPosition(), dbc.m_Settings.StartDimensions.X/2.0, _color, _z)
 		}
 	})
 	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
 		if sbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRectRotated(sbc.GetPosition(), _z, sbc.m_Settings.StartDimensions, _color, sbc.GetRotation())
+			DrawRect(sbc.GetPosition(), sbc.m_Settings.StartDimensions, _color, _z, sbc.GetRotation())
+
 		} else {
-			Shapes.DrawCircle(sbc.GetPosition(), _z, sbc.m_Settings.StartDimensions.X/2.0, _color)
+			DrawCircle(sbc.GetPosition(), sbc.m_Settings.StartDimensions.X/2.0, _color, _z)
 		}
 	})
 	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
 		if kbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			Shapes.DrawRectRotated(kbc.GetPosition(), _z, kbc.m_Settings.StartDimensions, _color, kbc.GetRotation())
+			DrawRect(kbc.GetPosition(), kbc.m_Settings.StartDimensions, _color, _z, kbc.GetRotation())
 		} else {
-			Shapes.DrawCircle(kbc.GetPosition(), _z, kbc.m_Settings.StartDimensions.X/2.0, _color)
+			DrawCircle(kbc.GetPosition(), kbc.m_Settings.StartDimensions.X/2.0, _color, _z)
 		}
 	})
 
-	Shapes.LineWidth = _original
+	for c := range collisionTiles.Data {
+		DrawRect(collisionTiles.Data[c].First, collisionTiles.Data[c].Second, _color, _z, 0.0)
+	}
+
+	lineWidth = _original
 }

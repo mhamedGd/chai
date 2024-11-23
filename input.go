@@ -215,6 +215,17 @@ const MouseButtonNull MouseButton = -1
 const KeyNull string = ""
 const CodeNull string = ""
 
+type Gamepad struct {
+	Start, Select                         bool
+	South, East, West, North              bool
+	DPADDown, DPADRight, DPADLeft, DPADUp bool
+	LeftTriggerA, RightTriggerA           bool
+	LeftTriggerB, RightTriggerB           float32
+	LeftJoystick, RightJoystick           Vector2f
+}
+
+var Gamepads customtypes.List[Gamepad]
+
 type AppEvent struct {
 	// --------------------------
 	m_Event jsEvent

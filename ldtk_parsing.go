@@ -193,6 +193,7 @@ func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _
 		if len(tile_enumset) > 0 {
 			if tile_enumset[0] == "Solid" {
 				newStaticCollisionTileBox2d(collider_pos, _l.m_TileSize, _scaleFactor, _l.m_PhysicsLayer)
+
 				_level.SolidTiles.Insert(NewVector2i(_this_tile.Position[0]/_l.m_TileSize, _this_tile.Position[1]/_l.m_TileSize), Tile{Enumset: customtypes.ListFromSlice(tile_enumset), Solid: true})
 			}
 		}
@@ -279,4 +280,9 @@ func newStaticCollisionTileBox2d(_position Vector2f, _tileSize int, _scale float
 	fixture.SetSensor(false)
 
 	body.SetUserData(0)
+
+	collisionTiles.PushBack(customtypes.Pair[Vector2f, Vector2f]{
+		First:  _position,
+		Second: Vector2fOne.Scale(_scale * float32(_tileSize)),
+	})
 }

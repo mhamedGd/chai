@@ -340,7 +340,6 @@ void main(void) {
 type FontBatchAtlas struct {
 	m_CharAtlasSet customtypes.Map[rune, CharAtlasGlyph]
 	m_TextureAtlas Texture2D
-	SpriteBatch    *SpriteBatch
 	m_FontSettings FontBatchSettings
 }
 
@@ -359,7 +358,6 @@ type FontBatchSettings struct {
 
 func (self *FontBatchAtlas) Init() {
 	self.m_CharAtlasSet = customtypes.NewMap[rune, CharAtlasGlyph]()
-	self.SpriteBatch = &Sprites
 }
 
 const GLYPH_ATLAS_GAP = 5
@@ -533,7 +531,7 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 
 		loc_pos := originalPos
 		loc_pos.Y += (charglyph.m_Bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.m_Size.Scale(_scale), charglyph.m_Uv1, charglyph.m_Uv2, _z, &self.m_TextureAtlas, _tint)
+		Renderer.InsertQuadTex(loc_pos, charglyph.m_Size.Scale(_scale), customtypes.Pair[Vector2f, Vector2f]{charglyph.m_Uv1, charglyph.m_Uv2}, _z, _tint, &self.m_TextureAtlas)
 		originalPos.X += charglyph.m_Advance * _scale
 	}
 
@@ -566,12 +564,9 @@ func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _
 		loc_pos := originalPos
 		loc_pos.X -= charglyph.m_Bearing.X * _scale
 		loc_pos.Y += (charglyph.m_Bearing.Y) * _scale
-		self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.m_Size.Scale(_scale), charglyph.m_Uv1, charglyph.m_Uv2, _z, &self.m_TextureAtlas, _tint)
+		// self.SpriteBatch.DrawSpriteBottomLeft(loc_pos, charglyph.m_Size.Scale(_scale), charglyph.m_Uv1, charglyph.m_Uv2, _z, &self.m_TextureAtlas, _tint)
+		Renderer.InsertQuadTex(loc_pos, charglyph.m_Size.Scale(_scale), customtypes.Pair[Vector2f, Vector2f]{charglyph.m_Uv1, charglyph.m_Uv2}, _z, _tint, &self.m_TextureAtlas)
 
 		originalPos.X -= charglyph.m_Advance * _scale
 	}
-}
-
-func (self *FontBatchAtlas) Render() {
-	self.SpriteBatch.Render()
 }

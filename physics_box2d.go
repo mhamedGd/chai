@@ -73,13 +73,12 @@ func newKinematicBodyBox2d(_entityId EntId, _visualTransform VisualTransform, _k
 	}
 }
 
-func newphysicsbodyBox2d(_entId EntId, _visualTransform VisualTransform, _colliderShape int, _physicsLayer uint16, _density, _friction, _restitution float32, _isTrigger bool, _bodyDef *box2d.B2BodyDef) *box2d.B2Body {
+func newphysicsbodyBox2d(_entId EntId, _visualTransform VisualTransform, _colliderShape int, _physicsLayer uint16, _mass, _friction, _restitution float32, _isTrigger bool, _bodyDef *box2d.B2BodyDef) *box2d.B2Body {
 	body := physics_world.box2dWorld.CreateBody(_bodyDef)
 	body.SetTransform(vec2fToB2Vec(_visualTransform.Position), float64(_visualTransform.Rotation*Deg2Rad))
 	fd := box2d.MakeB2FixtureDef()
 	fd.Filter.CategoryBits = _physicsLayer
 	// fd.Filter.MaskBits = PHYSICS_LAYER_1
-
 	switch _colliderShape {
 	case SHAPE_RECTBODY:
 		shape := box2d.MakeB2PolygonShape()
@@ -92,7 +91,7 @@ func newphysicsbodyBox2d(_entId EntId, _visualTransform VisualTransform, _collid
 	default:
 		ErrorF("[%v]: Collider Shape Unknown", _entId)
 	}
-	fd.Density = float64(_density)
+	fd.Density = float64(_mass / (4 * _visualTransform.Dimensions.X * _visualTransform.Dimensions.Y))
 	fd.Friction = float64(_friction)
 	fd.Restitution = float64(_restitution)
 	fixture := body.CreateFixtureFromDef(&fd)
@@ -121,7 +120,10 @@ func getDynamicRotationBox2d(_body *box2d.B2Body) float32 {
 }
 
 func applyForceBox2d(_body *box2d.B2Body, _forceAmount Vector2f, _pivot Vector2f) {
-	_body.ApplyForce(vec2fToB2Vec(_forceAmount), vec2fToB2Vec(_pivot), true)
+	_center := vec2fToB2Vec(_pivot)
+	_center.X += _body.GetWorldCenter().X
+	_center.Y += _body.GetWorldCenter().Y
+	_body.ApplyForce(vec2fToB2Vec(_forceAmount), _center, false)
 }
 func applyImpulseBox2d(_body *box2d.B2Body, _forceAmount Vector2f, _pivot Vector2f) {
 	_body.ApplyLinearImpulse(vec2fToB2Vec(_forceAmount), vec2fToB2Vec(_pivot), true)

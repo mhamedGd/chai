@@ -1,6 +1,7 @@
 package chai
 
 import (
+	"github.com/mhamedGd/chai/customtypes"
 	. "github.com/mhamedGd/chai/math"
 
 	"bytes"
@@ -16,7 +17,7 @@ precision mediump float;
 
 in vec2 vertexPosition;
 in vec2 vertexUv;
-in float m_Z;
+in float z;
 in vec4 vertexColor;
 in float texIndex;
 
@@ -28,12 +29,15 @@ uniform mat4 u_View_Matrix;
 
 void main()
 {
-	gl_Position.xy = (u_View_Matrix * vec4(vertexPosition.x, vertexPosition.y, m_Z, 1.0)).xy;
-    gl_Position.m_Z = 0.0;
-	gl_Position.w = 1.0;
+	
+	vec4 global_position = vec4(0.0);
+	global_position = u_View_Matrix * vec4(vertexPosition, 0.0, 1.0);
+	global_position.z = z;
+	global_position.w = 1.0;		
+	gl_Position = global_position;
 
     frag_VertexUV = vertexUv;
-    frag_VertexUV.y = 1.0 - frag_VertexUV.y;
+    // frag_VertexUV.y = 1.0 - frag_VertexUV.y;
 	frag_VertexColor = vertexColor;
     frag_TexIndex = texIndex;
 }`
@@ -48,8 +52,6 @@ in vec4 frag_VertexColor;
 in float frag_TexIndex;
 
 uniform sampler2D u_Textures[6];
-uniform sampler2D tex01;
-uniform sampler2D tex02;
 
 vec4 TextureColor(int _index) {
     switch(_index){
@@ -72,9 +74,9 @@ vec4 TextureColor(int _index) {
 void main()
 {
     int _index = int(frag_TexIndex);
-    vec4 _finalColor = vec4(1.0);
+    vec4 _finalColor = TextureColor(_index)*frag_VertexColor;
     
-    fragColor = frag_VertexColor * TextureColor(_index);
+    fragColor = _finalColor * frag_VertexColor.a;
 }`
 
 const (
@@ -114,32 +116,101 @@ type Renderer2D struct {
 	m_TextureSlotIndex      uint32
 
 	m_Shader ShaderProgram
-	m_Camera Camera2D
+	m_Camera *Camera2D
 	m_App    *App
 }
 
-func (_renderer *Renderer2D) InsertQuad(_center Vector2f, _z float32, _tint RGBA8) {
+func (_renderer *Renderer2D) InsertQuadWithCoordinates(_leftBottomTop, _rightBottomTop customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8) {
 	if _renderer.m_NumOfQuads >= _renderer.m_MaximumQuads {
 		_renderer.End()
 		_renderer.Render()
 		_renderer.Begin()
 	}
-
-	_half_dims := NewVector2f(35.0, 35.0)
 	_new_z := RemapFloat32(_z, 0, _renderer.m_MaximumZ, -0.9999, 9.9999)
 	_vertex_index := _renderer.m_NumOfVertices
+	_renderer.m_Vertices[_vertex_index+0].m_Coordinates = _leftBottomTop.First
+	_renderer.m_Vertices[_vertex_index+0].m_TexCoordinates = Vector2fZero
+	_renderer.m_Vertices[_vertex_index+0].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+0].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+0].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
 
-	_renderer.m_Vertices[_vertex_index+0] = NVertex{_center.Add(_half_dims.Scale(-1.0)), Vector2f{0.0, 0.0}, _new_z, _tint, float32(_renderer.m_WhiteTextureSlotIndex)}
-	_renderer.m_Vertices[_vertex_index+1] = NVertex{_center.Add(NewVector2f(_half_dims.X, -_half_dims.Y)), Vector2f{0.0, 1.0}, _new_z, _tint, float32(_renderer.m_WhiteTextureSlotIndex)}
-	_renderer.m_Vertices[_vertex_index+2] = NVertex{_center.Add(_half_dims.Scale(1.0)), Vector2f{1.0, 1.0}, _new_z, _tint, float32(_renderer.m_WhiteTextureSlotIndex)}
-	_renderer.m_Vertices[_vertex_index+3] = NVertex{_center.Add(NewVector2f(-_half_dims.X, _half_dims.Y)), Vector2f{1.0, 0.0}, _new_z, _tint, float32(_renderer.m_WhiteTextureSlotIndex)}
+	_renderer.m_Vertices[_vertex_index+1].m_Coordinates = _leftBottomTop.Second
+	_renderer.m_Vertices[_vertex_index+1].m_TexCoordinates = Vector2fUp
+	_renderer.m_Vertices[_vertex_index+1].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+1].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+1].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_Vertices[_vertex_index+2].m_Coordinates = _rightBottomTop.Second
+	_renderer.m_Vertices[_vertex_index+2].m_TexCoordinates = Vector2fOne
+	_renderer.m_Vertices[_vertex_index+2].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+2].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+2].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_Vertices[_vertex_index+3].m_Coordinates = _rightBottomTop.First
+	_renderer.m_Vertices[_vertex_index+3].m_TexCoordinates = Vector2fRight
+	_renderer.m_Vertices[_vertex_index+3].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+3].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+3].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
 
 	_renderer.m_NumOfElements += 6
 	_renderer.m_NumOfVertices += 4
 	_renderer.m_NumOfQuads += 1
 }
 
-func (_renderer *Renderer2D) InsertQuadTex(_center Vector2f, _z float32, _tint RGBA8, _texture *Texture2D) {
+func (_renderer *Renderer2D) InsertQuadWithCoordinatesRotated(_leftBottomTop, _rightBottomTop customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8, _rotation float32) {
+	if _renderer.m_NumOfQuads >= _renderer.m_MaximumQuads {
+		_renderer.End()
+		_renderer.Render()
+		_renderer.Begin()
+	}
+	midPoint := Vector2fMidpoint(_leftBottomTop.First, _rightBottomTop.Second)
+	_new_z := RemapFloat32(_z, 0, _renderer.m_MaximumZ, -0.9999, 9.9999)
+	_vertex_index := _renderer.m_NumOfVertices
+	_renderer.m_Vertices[_vertex_index+0].m_Coordinates = _leftBottomTop.First.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+0].m_TexCoordinates = Vector2fZero
+	_renderer.m_Vertices[_vertex_index+0].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+0].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+0].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_Vertices[_vertex_index+1].m_Coordinates = _leftBottomTop.Second.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+1].m_TexCoordinates = Vector2fUp
+	_renderer.m_Vertices[_vertex_index+1].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+1].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+1].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_Vertices[_vertex_index+2].m_Coordinates = _rightBottomTop.Second.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+2].m_TexCoordinates = Vector2fOne
+	_renderer.m_Vertices[_vertex_index+2].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+2].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+2].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_Vertices[_vertex_index+3].m_Coordinates = _rightBottomTop.First.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+3].m_TexCoordinates = Vector2fRight
+	_renderer.m_Vertices[_vertex_index+3].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+3].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+3].m_textureIndex = float32(_renderer.m_WhiteTextureSlotIndex)
+
+	_renderer.m_NumOfElements += 6
+	_renderer.m_NumOfVertices += 4
+	_renderer.m_NumOfQuads += 1
+}
+
+func (_renderer *Renderer2D) InsertQuad(_origin, _dims Vector2f, _z float32, _tint RGBA8) {
+	_renderer.InsertQuadWithCoordinates(
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin, Second: _origin.AddXY(0.0, _dims.Y)},
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin.AddXY(_dims.X, 0.0), Second: _origin.Add(_dims)},
+		_z, _tint)
+
+}
+
+func (_renderer *Renderer2D) InsertQuadRotated(_origin, _dims Vector2f, _z float32, _tint RGBA8, _rotation float32) {
+	_renderer.InsertQuadWithCoordinatesRotated(
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin, Second: _origin.AddXY(0.0, _dims.Y)},
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin.AddXY(_dims.X, 0.0), Second: _origin.Add(_dims)},
+		_z, _tint, _rotation)
+}
+
+func (_renderer *Renderer2D) InsertQuadTexWithCoordinates(_leftBottomTop, _rightBottomTop, _uv customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8, _texture *Texture2D) {
 	if _renderer.m_NumOfQuads >= _renderer.m_MaximumQuads || _renderer.m_TextureSlotIndex > MAX_TEXTURES-1 {
 		_renderer.End()
 		_renderer.Render()
@@ -157,18 +228,100 @@ func (_renderer *Renderer2D) InsertQuadTex(_center Vector2f, _z float32, _tint R
 		_renderer.m_TextureSlotIndex += 1
 	}
 
-	_half_dims := NewVector2f(35.0, 35.0)
 	_new_z := RemapFloat32(_z, 0, _renderer.m_MaximumZ, -0.9999, 9.9999)
 	_vertex_index := _renderer.m_NumOfVertices
 
-	_renderer.m_Vertices[_vertex_index+0] = NVertex{_center.Add(_half_dims.Scale(-1.0)), Vector2f{0.0, 0.0}, _new_z, _tint, float32(_texture_index)}
-	_renderer.m_Vertices[_vertex_index+1] = NVertex{_center.Add(NewVector2f(_half_dims.X, -_half_dims.Y)), Vector2f{0.0, 1.0}, _new_z, _tint, float32(_texture_index)}
-	_renderer.m_Vertices[_vertex_index+2] = NVertex{_center.Add(_half_dims.Scale(1.0)), Vector2f{1.0, 1.0}, _new_z, _tint, float32(_texture_index)}
-	_renderer.m_Vertices[_vertex_index+3] = NVertex{_center.Add(NewVector2f(-_half_dims.X, _half_dims.Y)), Vector2f{1.0, 0.0}, _new_z, _tint, float32(_texture_index)}
+	_renderer.m_Vertices[_vertex_index+0].m_Coordinates = _leftBottomTop.First
+	_renderer.m_Vertices[_vertex_index+0].m_TexCoordinates = NewVector2f(_uv.First.X, _uv.Second.Y)
+	_renderer.m_Vertices[_vertex_index+0].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+0].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+0].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+1].m_Coordinates = _leftBottomTop.Second
+	_renderer.m_Vertices[_vertex_index+1].m_TexCoordinates = _uv.First
+	_renderer.m_Vertices[_vertex_index+1].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+1].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+1].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+2].m_Coordinates = _rightBottomTop.Second
+	_renderer.m_Vertices[_vertex_index+2].m_TexCoordinates = NewVector2f(_uv.Second.X, _uv.First.Y)
+	_renderer.m_Vertices[_vertex_index+2].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+2].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+2].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+3].m_Coordinates = _rightBottomTop.First
+	_renderer.m_Vertices[_vertex_index+3].m_TexCoordinates = _uv.Second
+	_renderer.m_Vertices[_vertex_index+3].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+3].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+3].m_textureIndex = _texture_index
 
 	_renderer.m_NumOfElements += 6
 	_renderer.m_NumOfVertices += 4
 	_renderer.m_NumOfQuads += 1
+}
+
+func (_renderer *Renderer2D) InsertQuadTexWithCoordinatesRotated(_leftBottomTop, _rightBottomTop, _uv customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8, _texture *Texture2D, _rotation float32) {
+	if _renderer.m_NumOfQuads >= _renderer.m_MaximumQuads || _renderer.m_TextureSlotIndex > MAX_TEXTURES-1 {
+		_renderer.End()
+		_renderer.Render()
+		_renderer.Begin()
+	}
+	_texture_index := float32(0.0)
+	for i := uint32(1); i < _renderer.m_TextureSlotIndex; i++ {
+		if _renderer.m_TextureSlots[i].Equal(_texture.m_TextureId) {
+			_texture_index = float32(i)
+		}
+	}
+	if _texture_index == 0.0 {
+		_texture_index = float32(_renderer.m_TextureSlotIndex)
+		_renderer.m_TextureSlots[_renderer.m_TextureSlotIndex] = _texture.m_TextureId
+		_renderer.m_TextureSlotIndex += 1
+	}
+
+	midPoint := Vector2fMidpoint(_leftBottomTop.First, _rightBottomTop.Second)
+	_new_z := RemapFloat32(_z, 0, _renderer.m_MaximumZ, -0.9999, 9.9999)
+	_vertex_index := _renderer.m_NumOfVertices
+
+	_renderer.m_Vertices[_vertex_index+0].m_Coordinates = _leftBottomTop.First.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+0].m_TexCoordinates = NewVector2f(_uv.First.X, _uv.Second.Y)
+	_renderer.m_Vertices[_vertex_index+0].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+0].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+0].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+1].m_Coordinates = _leftBottomTop.Second.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+1].m_TexCoordinates = _uv.First
+	_renderer.m_Vertices[_vertex_index+1].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+1].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+1].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+2].m_Coordinates = _rightBottomTop.Second.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+2].m_TexCoordinates = NewVector2f(_uv.Second.X, _uv.First.Y)
+	_renderer.m_Vertices[_vertex_index+2].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+2].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+2].m_textureIndex = _texture_index
+
+	_renderer.m_Vertices[_vertex_index+3].m_Coordinates = _rightBottomTop.First.Rotate(_rotation, midPoint)
+	_renderer.m_Vertices[_vertex_index+3].m_TexCoordinates = _uv.Second
+	_renderer.m_Vertices[_vertex_index+3].m_Z = _new_z
+	_renderer.m_Vertices[_vertex_index+3].m_Color = _tint
+	_renderer.m_Vertices[_vertex_index+3].m_textureIndex = _texture_index
+
+	_renderer.m_NumOfElements += 6
+	_renderer.m_NumOfVertices += 4
+	_renderer.m_NumOfQuads += 1
+}
+
+func (_renderer *Renderer2D) InsertQuadTex(_origin, _dims Vector2f, _uv customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8, _texture *Texture2D) {
+	_renderer.InsertQuadTexWithCoordinates(
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin, Second: _origin.AddXY(0.0, _dims.Y)},
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin.AddXY(_dims.X, 0.0), Second: _origin.Add(_dims)},
+		_uv, _z, _tint, _texture)
+}
+func (_renderer *Renderer2D) InsertQuadTexRotated(_origin, _dims Vector2f, _uv customtypes.Pair[Vector2f, Vector2f], _z float32, _tint RGBA8, _texture *Texture2D, _rotation float32) {
+	_renderer.InsertQuadTexWithCoordinatesRotated(
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin, Second: _origin.AddXY(0.0, _dims.Y)},
+		customtypes.Pair[Vector2f, Vector2f]{First: _origin.AddXY(_dims.X, 0.0), Second: _origin.Add(_dims)},
+		_uv, _z, _tint, _texture, _rotation)
 }
 
 func (_renderer *Renderer2D) Begin() {
@@ -186,7 +339,9 @@ func (_renderer *Renderer2D) End() {
 	canvasContext.Call("bindBuffer", canvasContext.Get("ARRAY_BUFFER"), _renderer.m_Vbo)
 	// _jsNVerts := nVertexBufferToJsNVertexBuffer(_renderer.m_Vertices)
 	setNVertexBufferAndJsBuffer(&_renderer.m_JsVertsBuffer, _renderer.m_BytesVertsBuffer, _renderer.m_Vertices)
+
 	canvasContext.Call("bufferSubData", canvasContext.Get("ARRAY_BUFFER"), 0, _renderer.m_JsVertsBuffer)
+
 	// canvasContext.Call("bufferData", canvasContext.Get("ARRAY_BUFFER"), _jsNVerts, canvasContext.Get("DYNAMIC_DRAW"))
 	// _jsNVerts.Set("delete", nil)
 }
@@ -219,7 +374,7 @@ func (_renderer *Renderer2D) Render() {
 	///////////////////////////////
 
 	for i := uint32(0); i < _renderer.m_TextureSlotIndex; i++ {
-		canvasContext.Call("activeTexture", canvasContext.Get("TEXTURE1"))
+		canvasContext.Call("activeTexture", 33984+i)
 		canvasContext.Call("bindTexture", canvasContext.Get("TEXTURE_2D"), _renderer.m_TextureSlots[i])
 	}
 
@@ -228,7 +383,7 @@ func (_renderer *Renderer2D) Render() {
 	canvasContext.Call("bindVertexArray", js.Null())
 }
 
-func NewRenderer(_app *App, _maxQuads int) Renderer2D {
+func NewRenderer(_app *App, _maxQuads int, _cam *Camera2D) Renderer2D {
 	_renderer := Renderer2D{}
 
 	_MAX_VERTEX_COUNT := 4 * _maxQuads
@@ -295,9 +450,10 @@ func NewRenderer(_app *App, _maxQuads int) Renderer2D {
 	canvasContext.Call("disableVertexAttribArray", 3)
 	canvasContext.Call("disableVertexAttribArray", 4)
 
-	_renderer.m_Camera.Init(*_app)
-	_renderer.m_Camera.m_CenterOffset = NewVector2f(float32(_app.Width)/2.0, float32(_app.Height)/2.0)
-	_renderer.m_Camera.Update(*_app)
+	// _renderer.m_Camera.Init(*_app)
+	// _renderer.m_Camera.m_CenterOffset = NewVector2f(float32(_app.Width)/2.0, float32(_app.Height)/2.0)
+	// _renderer.m_Camera.Update(*_app)
+	_renderer.m_Camera = _cam
 
 	_renderer.m_Shader.ParseShader(vERTEX_SHADER, fRAGMENT_SHADER)
 	_renderer.m_Shader.CreateShaderProgram()

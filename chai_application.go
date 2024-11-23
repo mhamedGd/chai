@@ -101,16 +101,7 @@ func modulesInitialization(_app *App) {
 	RenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(1000.0, 1000.0)})
 	DynamicRenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(10000.0, 10000.0)})
 
-	Shapes.Init()
-	Assert(Shapes.Initialized, "Shapes Rendering was not initialized successfully")
-	UIShapes.Init()
-	Assert(UIShapes.Initialized, "Shapes Rendering was not initialized successfully")
-
-	Sprites.Init("")
-	UISprites.Init("")
-	Sprites.RenderCam = &Cam
-	UISprites.RenderCam = &uiCam
-	Renderer = NewRenderer(_app, 50_000)
+	Renderer = NewRenderer(_app, 5_000, &Cam)
 }
 
 func eventsInitialization(_app *App) {
@@ -168,5 +159,14 @@ func eventsInitialization(_app *App) {
 		MouseCanvasPos.X = (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientX").Int()) - float32(canvasBoundingClientRect.Get("left").Int())) / float32(canvasBoundingClientRect.Get("width").Int()) * float32(canvas.Get("width").Int())
 		MouseCanvasPos.Y = float32(canvas.Get("height").Int()) - (float32(ae.GetJsEvent().Get("touches").Index(0).Get("clientY").Int())-float32(canvasBoundingClientRect.Get("top").Int()))/float32(canvasBoundingClientRect.Get("height").Int())*float32(canvas.Get("height").Int())
 		_app.OnEvent(ae)
+	})
+
+	addJsEventListener("gamepadconnected", func(this js.Value, args []js.Value) any {
+		// event := args[0]
+		Gamepads.PushBack(Gamepad{
+			// LeftJoystick:  NewVector2f(float32(event.Get("axes").Index(0).Float()), float32(event.Get("axes").Index(1).Float())),
+			// RightJoystick: NewVector2f(float32(event.Get("axes").Index(2).Float()), float32(event.Get("axes").Index(3).Float())),
+		})
+		return 0
 	})
 }

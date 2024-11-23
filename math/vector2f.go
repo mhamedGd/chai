@@ -111,7 +111,7 @@ func (v Vector2f) Angle() float32 {
 }
 
 func (v Vector2f) Rotate(_rotation float32, _pivot Vector2f) Vector2f {
-	anglePolar := _rotation * math.Pi / 180.0
+	anglePolar := _rotation * Deg2Rad
 	_x := v.X
 	_y := v.Y
 
