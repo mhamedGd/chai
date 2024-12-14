@@ -117,7 +117,7 @@ func ParseLdtk(_filePath string) customtypes.Map[string, Tilemap] {
 	return temp_levels_map
 }
 
-func LoadTilemapLevel(_scene *Scene, _levelName string, _allLevels customtypes.Map[string, Tilemap], _z, _scale float32, _offset Vector2f) *Tilemap {
+func LoadTilemapLevel(_scene *Scene, _levelName string, _allLevels customtypes.Map[string, Tilemap], _z int, _scale float32, _offset Vector2f) *Tilemap {
 	// tilemap_level := ldtkLevels.Get(_levelName)
 	level := _allLevels.Get(_levelName)
 
@@ -149,7 +149,7 @@ func LoadTilemapLevel(_scene *Scene, _levelName string, _allLevels customtypes.M
 	return &level
 }
 
-func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _l levelLayer, _texture Texture2D, _tW, _tH int, _offset Vector2f, _z, _scale float32) {
+func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _l levelLayer, _texture Texture2D, _tW, _tH int, _offset Vector2f, _z int, _scale float32) {
 	for i := 0; i < _list.Count(); i++ {
 		_this_tile := _list.Data[i]
 		pixel_size_x := 1.0 / float32(_tW)
@@ -178,7 +178,7 @@ func createTilesFromList(_level *Tilemap, _list customtypes.List[ldtkgo.Tile], _
 		t := VisualTransform{
 			Position:   NewVector2f(float32(_this_tile.Position[0])+BoolToFloat32(_this_tile.FlipX())*float32(_l.m_TileSize), float32(-_this_tile.Position[1])+BoolToFloat32(_this_tile.FlipY())*float32(_l.m_TileSize)).Add(Vector2fDown.Scale(float32(_l.m_TileSize))).Scale(_scaleFactor).Add(_offset),
 			Dimensions: NewVector2f(float32(_l.m_TileSize)*flip_factor_x, float32(_l.m_TileSize)*flip_factor_y).Scale(_scaleFactor),
-			Z:          _z + _l.m_ZOffset,
+			Z:          _z,
 			Scale:      1,
 			Tint:       NewRGBA8Float(1.0, 1.0, 1.0, _l.m_Opacity),
 			UV1:        origin_uv,

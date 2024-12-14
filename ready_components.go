@@ -8,7 +8,7 @@ import (
 
 type VisualTransform struct {
 	Position   Vector2f
-	Z          float32
+	Z          int
 	Dimensions Vector2f
 	Rotation   float32
 	Scale      float32
@@ -378,33 +378,35 @@ func SpriteAnimationSystem(_thisScene *Scene, _dt float32) {
 func DebugBodyDrawSystem(_thisScene *Scene, _dt float32) {
 	_original := lineWidth
 	_color := NewRGBA8(0, 255, 0, 255)
-	_z := float32(0)
+	_z := 100
 	lineWidth = 0.01
-	Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
-		if dbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			DrawRect(dbc.GetPosition(), dbc.m_Settings.StartDimensions, _color, _z, dbc.GetRotation())
-		} else {
-			DrawCircle(dbc.GetPosition(), dbc.m_Settings.StartDimensions.X/2.0, _color, _z)
-		}
-	})
-	Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
-		if sbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			DrawRect(sbc.GetPosition(), sbc.m_Settings.StartDimensions, _color, _z, sbc.GetRotation())
+	for i := 0; i < 5; i++ {
+		Iterate1[DynamicBodyComponent](func(i ecs.Id, dbc *DynamicBodyComponent) {
+			if dbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
+				DrawRect(dbc.GetPosition(), dbc.m_Settings.StartDimensions, _color, _z, dbc.GetRotation())
+			} else {
+				DrawCircle(dbc.GetPosition(), dbc.m_Settings.StartDimensions.X/2.0, _color, _z)
+			}
+		})
+		Iterate1[StaticBodyComponent](func(i ecs.Id, sbc *StaticBodyComponent) {
+			if sbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
+				DrawRect(sbc.GetPosition(), sbc.m_Settings.StartDimensions, _color, _z, sbc.GetRotation())
 
-		} else {
-			DrawCircle(sbc.GetPosition(), sbc.m_Settings.StartDimensions.X/2.0, _color, _z)
-		}
-	})
-	Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
-		if kbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
-			DrawRect(kbc.GetPosition(), kbc.m_Settings.StartDimensions, _color, _z, kbc.GetRotation())
-		} else {
-			DrawCircle(kbc.GetPosition(), kbc.m_Settings.StartDimensions.X/2.0, _color, _z)
-		}
-	})
+			} else {
+				DrawCircle(sbc.GetPosition(), sbc.m_Settings.StartDimensions.X/2.0, _color, _z)
+			}
+		})
+		Iterate1[KinematicBodyComponent](func(i ecs.Id, kbc *KinematicBodyComponent) {
+			if kbc.m_Settings.ColliderShape == SHAPE_RECTBODY {
+				DrawRect(kbc.GetPosition(), kbc.m_Settings.StartDimensions, _color, _z, kbc.GetRotation())
+			} else {
+				DrawCircle(kbc.GetPosition(), kbc.m_Settings.StartDimensions.X/2.0, _color, _z)
+			}
+		})
 
-	for c := range collisionTiles.Data {
-		DrawRect(collisionTiles.Data[c].First, collisionTiles.Data[c].Second, _color, _z, 0.0)
+		for c := range collisionTiles.Data {
+			DrawRect(collisionTiles.Data[c].First, collisionTiles.Data[c].Second, _color, _z, 0.0)
+		}
 	}
 
 	lineWidth = _original

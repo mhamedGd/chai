@@ -501,7 +501,7 @@ func LoadFontToAtlas(_fontPath string, _fontSettings *FontBatchSettings) FontBat
 	return tempFont
 }
 
-func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
+func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale float32, _z int, _tint RGBA8) {
 	if self.m_FontSettings.Arabic {
 		self.drawStringArabic(_text, _position, _scale, _z, _tint)
 	} else {
@@ -509,7 +509,7 @@ func (self *FontBatchAtlas) DrawString(_text string, _position Vector2f, _scale 
 	}
 }
 
-func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
+func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, _scale float32, _z int, _tint RGBA8) {
 
 	originalPos := _position
 
@@ -537,7 +537,7 @@ func (self *FontBatchAtlas) drawStringEnglish(_text string, _position Vector2f, 
 
 }
 
-func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _scale float32, _z float32, _tint RGBA8) {
+func (self *FontBatchAtlas) drawStringArabic(_text string, _position Vector2f, _scale float32, _z int, _tint RGBA8) {
 	_new_text := ShapeArabic(_text)
 	_new_text = reverse(_new_text)
 	numsArabic := findWordLowAndHigh(_new_text)

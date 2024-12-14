@@ -809,11 +809,11 @@ func SetLineWidth(_newWidth float32) {
 }
 
 // These are wrapper functions for the Renderer, I don't want Renderer2D to be cluttered with little functions that change some functionality, like I did with the SpriteBatch struct above.
-func DrawLine(_p1, _p2 Vector2f, _c RGBA8, _z float32) {
+func DrawLine(_p1, _p2 Vector2f, _c RGBA8, _z int) {
 	DrawLineWRenderer(&Renderer, _p1, _p2, _c, _z)
 }
 
-func DrawLineWRenderer(_renderer *Renderer2D, _p1, _p2 Vector2f, _c RGBA8, _z float32) {
+func DrawLineWRenderer(_renderer *Renderer2D, _p1, _p2 Vector2f, _c RGBA8, _z int) {
 	rotatingOffset := _p2.Subtract(_p1)
 	rotatingOffset = rotatingOffset.Perpendicular()
 	rotatingOffset = rotatingOffset.Normalize()
@@ -823,11 +823,11 @@ func DrawLineWRenderer(_renderer *Renderer2D, _p1, _p2 Vector2f, _c RGBA8, _z fl
 		_z, _c)
 }
 
-func DrawRect(_center, _dimensions Vector2f, _c RGBA8, _z, _r float32) {
+func DrawRect(_center, _dimensions Vector2f, _c RGBA8, _z int, _r float32) {
 	DrawRectWRenderer(&Renderer, _center, _dimensions, _c, _z, _r)
 }
 
-func DrawRectWRenderer(_renderer *Renderer2D, _center, _dimensions Vector2f, _c RGBA8, _z, _r float32) {
+func DrawRectWRenderer(_renderer *Renderer2D, _center, _dimensions Vector2f, _c RGBA8, _z int, _r float32) {
 	lineDifference := lineWidth
 
 	lbPoint := _center.AddXY(-(_dimensions.X / 2.0), -(_dimensions.Y / 2.0))
@@ -841,11 +841,11 @@ func DrawRectWRenderer(_renderer *Renderer2D, _center, _dimensions Vector2f, _c 
 	DrawLineWRenderer(_renderer, rbPoint.AddXY(lineDifference, 0.0).Rotate(_r, _center), lbPoint.AddXY(-lineDifference, 0.0).Rotate(_r, _center), _c, _z)
 }
 
-func DrawCircle(_center Vector2f, _radius float32, _c RGBA8, _z float32) {
+func DrawCircle(_center Vector2f, _radius float32, _c RGBA8, _z int) {
 	DrawCircleWRenderer(&Renderer, _center, _radius, _c, _z)
 }
 
-func DrawCircleWRenderer(_renderer *Renderer2D, _center Vector2f, _radius float32, _c RGBA8, _z float32) {
+func DrawCircleWRenderer(_renderer *Renderer2D, _center Vector2f, _radius float32, _c RGBA8, _z int) {
 	numOfVertices := 16
 
 	pos := [16]Vector2f{}
@@ -862,31 +862,31 @@ func DrawCircleWRenderer(_renderer *Renderer2D, _center Vector2f, _radius float3
 
 /////////////////////////////////////////////////////
 
-type renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D)
+type renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D)
 
 var (
-	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+	QUAD_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D) {
 		// sh.DrawFillRectRotated(v1, z, v2, c, r)
 		Renderer.InsertQuadRotated(v1.Subtract(v2.Scale(0.5)), v2, z, c, r)
 	}
-	// TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+	// TRI_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(sh *ShapeBatch, sp *SpriteBatch, v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D) {
 	// 	sh.DrawFillTriangleRotated(v1, z, v2, c, r)
 	// }
 	// CIRCLE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
 	// 	sh.DrawCircle(v1, z, v2.X, c)
 	// }
-	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
-		DrawLine(v1, v1.Add(v2), c, z)
+	LINE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D) {
+		// DrawLine(v1, v1.Add(v2), c, z)
 	}
-	SPRITE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+	SPRITE_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D) {
 		// sp.DrawSpriteOriginScaledRotated(v1, v3, v4, v2.X, z, t, c, r)
 		// Sprites.DrawSpriteBottomLeft(v.Position, v.Dimensions, v.UV1, v.UV2, &tmc.tileset.m_Texture, WHITE)
 		// sp.DrawSpriteBottomLeft(v1, v2, v3, v4, t, c)
 		// sp.DrawSpriteBottomLeftRotated(v1, v2, v3, v4, z, t, c, r)
-		Renderer.InsertQuadTex(v1, v2, customtypes.Pair[Vector2f, Vector2f]{First: v3, Second: v4}, 0.0, c, t)
+		Renderer.InsertQuadTex(v1, v2, customtypes.Pair[Vector2f, Vector2f]{First: v3, Second: v4}, z, c, t)
 
 	}
-	SPRITECENTER_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r, z float32, t *Texture2D) {
+	SPRITECENTER_RENDEROBJECTTYPEFUNC renderObjectFuncType = func(v1, v2, v3, v4 Vector2f, c RGBA8, r float32, z int, t *Texture2D) {
 		// sp.DrawSpriteOriginScaledDimRotated(v1, v2.Multp(t.m_PixelsToMeterDimensions), v3, v4, 1.0, z, t, c, r)
 		newDim := v2.Multp(t.m_PixelsToMeterDimensions)
 		Renderer.InsertQuadTexRotated(v1.Subtract(newDim.Scale(0.5)), newDim, customtypes.Pair[Vector2f, Vector2f]{First: v3, Second: v4}, z, c, t, r)
