@@ -11,8 +11,8 @@ import (
 var app_url string
 
 // Used to make the update function only available in the local App struct, to the whole file
-var tempUpdate func(float32)
-var tempDraw func(float32)
+var appUpdate func(float32)
+var appDraw func(float32)
 
 var currentWidth, currentHeight int
 var canvas js.Value
@@ -82,8 +82,8 @@ func Run(_app *App) {
 	// canvasContext.Call("enable", canvasContext.Get("DEPTH_TEST"))
 	// /////////////////////////////
 
-	tempUpdate = _app.OnUpdate
-	tempDraw = _app.OnDraw
+	appUpdate = _app.OnUpdate
+	appDraw = _app.OnDraw
 
 	appPresets(_app)
 
@@ -103,9 +103,9 @@ func Run(_app *App) {
 var ElapsedTime float32
 var deltaTime float32
 
-const CAP_DELTA_TIME float32 = 50.0 / 1000.0
+const CAP_DELTA_TIME float32 = 60.0 / 1000.0
 
-const FIXED_UPDATE_INTERVAL float32 = 1.0 / 40.0
+const FIXED_UPDATE_INTERVAL float32 = 1.0 / 50.0
 const MAX_FIXED_CYCLES_PER_FRAME = 5
 
 var timeAccumulation float32
@@ -122,8 +122,9 @@ func jSUpdate(_this js.Value, _inputs []js.Value) interface{} {
 
 	currentWidth = canvas.Get("width").Int()
 	currentHeight = canvas.Get("height").Int()
-	current_scene.OnUpdate(deltaTime)
 	updateInput()
+	current_scene.OnUpdate(deltaTime)
+
 	Cam.Update(*appRef)
 	uiCam.Update(*appRef)
 
@@ -133,7 +134,7 @@ func jSUpdate(_this js.Value, _inputs []js.Value) interface{} {
 	}
 	// LogF("%v", RenderQuadTreeContainer.allItems.Count())
 
-	tempUpdate(deltaTime)
+	appUpdate(deltaTime)
 	ElapsedTime += deltaTime
 
 	timeAccumulation += deltaTime
@@ -185,7 +186,7 @@ func jSDraw(_this js.Value, _inputs []js.Value) interface{} {
 
 	}
 	current_scene.OnDraw()
-	tempDraw(deltaTime)
+	appDraw(deltaTime)
 	Renderer.End()
 	Renderer.Render()
 	return nil

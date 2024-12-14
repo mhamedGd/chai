@@ -101,7 +101,7 @@ func modulesInitialization(_app *App) {
 	RenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(1000.0, 1000.0)})
 	DynamicRenderQuadTreeContainer.Resize(Rect{Position: Vector2fZero, Size: NewVector2f(10000.0, 10000.0)})
 
-	Renderer = NewRenderer(_app, 5_000, &Cam)
+	Renderer = NewRenderer2D(5_000, _app, &Cam)
 }
 
 func eventsInitialization(_app *App) {

@@ -80,11 +80,11 @@ func (p *ParticlesShapeBatch) findLastFreeParticle() int {
 
 type ParticlesShapeComponent struct {
 	particlesBatch *ParticlesShapeBatch
-	z              float32
+	z              int
 	UpdateParticle func(float32, *Particle)
 }
 
-func NewParticlesShapeComponent(_maxParticles int, _z float32, _updateParticle func(float32, *Particle)) ParticlesShapeComponent {
+func NewParticlesShapeComponent(_maxParticles int, _z int, _updateParticle func(float32, *Particle)) ParticlesShapeComponent {
 	return ParticlesShapeComponent{
 		particlesBatch: newParticlesShapeBatch(_maxParticles),
 		z:              _z,
